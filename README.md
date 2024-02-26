@@ -1,6 +1,6 @@
 # PyBiblion 
 ### [Early Access Version]
-###### Due to the impact of the Spring Festival, the progress of code refactoring has slowed down. If you have any issues about the paper or this repo, contact us via Email: oceanytech@gmail.com or issues as you prefer, or in any way that is convenient for you.
+######  If you have any issues about the paper or this repo, contact us via Email: oceanytech@gmail.com or issues as you prefer, or in any way that is convenient for you.
 
 ## Introduction
 
