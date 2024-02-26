@@ -1,0 +1,41 @@
+# PyBiblion 
+### [Early Access Version]
+###### Due to the impact of the Spring Festival, the progress of code refactoring has slowed down. If you have any issues about the paper or this repo, contact us via Email: oceanytech@gmail.com or issues as you prefer, or in any way that is convenient for you.
+
+## Introduction
+
+This repository contains the official code implementation for the Paper "A Literature Review of Literature Reviews in Pattern Analysis and Machine
+Intelligence". Our goal is to provide a set of tools to assist researchers and scholars in conducting efficient and in-depth bibliometric analyses in the field.
+
+## Features
+
+- **Meta-data Retrieval**: Automated tools for fetching literature data from multiple databases.
+- **Data Analysis**: Offers a variety of literature data analysis tools, including but not limited to keyword extraction, and metric calculation.
+- **Visualization**: Generates intuitive charts and diagrams to help understand the distribution and relationships within the literature data.
+- **Extensibility**: The code is structured clearly, making it easy for other researchers to modify and extend according to their needs.
+
+## Installation
+
+This project is implemented in Python. To get started, you need to install Python and some dependencies. You can install the required dependencies with the following command:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Demo
+You may check lesson_101_demo.ipynb for more details.
+
+## Citation
+If you find this work useful for your research, please consider citing it as follows:
+```
+@article{zhao2024literature,
+  title={A Literature Review of Literature Reviews in Pattern Analysis and Machine Intelligence},
+  author={Zhao, Penghai and Zhang, Xin and Cheng, Ming-Ming and Yang, Jian and Li, Xiang},
+  journal={arXiv preprint arXiv:2402.12928},
+  year={2024}
+}
+```
+
+## Acknowledgements
+This project makes use of code from the [litstudy](https://github.com/NLeSC/litstudy) project, which is aimed at facilitating literature study in scientific research. We are grateful to the authors of litstudy for their valuable contributions to the open-source community. 
+
