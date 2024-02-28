@@ -226,10 +226,6 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
         if show_img:
             plt.show()
 
-    # 计算最后一个点的斜率
-    last_point_x = curve_x[-1]
-    last_point_y = curve_y[-1]
-
     dx_dt = np.zeros_like(t)
     dy_dt = np.zeros_like(t)
     # print(y)
@@ -237,27 +233,23 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
         dx_dt += comb(n - 1, i) * (n - i) * (1 - t) ** (n - i - 1) * t ** i * (x[i + 1] - x[i])
         dy_dt += comb(n - 1, i) * (n - i) * (1 - t) ** (n - i - 1) * t ** i * (y[i + 1] - y[i])
 
-    slope = dy_dt[-1] / dx_dt[-1]
+    I6 = dy_dt[-1] / dx_dt[-1]
     # print(len(dy_dt))
     slope_avg = []
     # sum([dy_dt[i-1] / dx_dt[i-1] for i in range(0, 101, 20)])/n+1
-    for i in range(0, 101, 20):
+    for i in range(0, 100, 20):
         # print((curve_x[i-1],curve_y[i-1]))
-        if i == 0:
-            slope_avg.append(dy_dt[0] / dx_dt[0])
-
-            # print(i,slopes[i])
-        else:
-            slope_avg.append(dy_dt[i - 1] / dx_dt[i - 1])
-
-    # print('平均', sum(slope_avg) / 6)
-    # print("瞬时斜率:", slope)
+        slope_avg.append(dy_dt[i] / dx_dt[i])
+    slope_avg.append(I6)
+    print(slope_avg)
+    print('平均', sum(slope_avg) / 6)
+    print("瞬时斜率:", I6)
     rst = {}
-    rst['L6'] = sum(slope_avg) / 6 if not math.isnan(sum(slope_avg)) else 1
-    rst['I6'] = slope if not math.isnan(slope) else 1
+    rst['L6'] = sum(slope_avg) / 6 if not math.isnan(sum(slope_avg)) else float('-inf')
+    rst['I6'] = I6 if not math.isnan(I6) else float('-inf')
     return rst
 
-
+print(get_IEI('segment anything'))
 
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
