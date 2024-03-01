@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/metrics/metric.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrics/metric.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -249,7 +248,7 @@
       <workItem from="1708415449217" duration="2661000" />
       <workItem from="1708506048356" duration="4785000" />
       <workItem from="1708915800504" duration="1462000" />
-      <workItem from="1708923914309" duration="9918000" />
+      <workItem from="1708923914309" duration="11525000" />
     </task>
     <servers />
   </component>
