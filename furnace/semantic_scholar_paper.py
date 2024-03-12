@@ -1,34 +1,14 @@
 import re
 import shelve
-import logging
-import string
-import warnings
-from time import sleep
 from urllib.parse import urlencode
-from urllib.parse import urlencode
-import requests
-
 from datetime import datetime
-
-import arxiv
 from retry import retry
-from scholarly import scholarly
 # OPENAI SETUP
-import openai
 import requests
-import pandas as pd
-import matplotlib.pyplot as plt
-import string
-
 from CACHE.CACHE_Config import generate_cache_file_name
 from config.config import *
 from furnace.Author import Author
 from furnace.Publication import Document
-from furnace.Quoter import quote_plus
-from tools.Reference import filter_punctuation
-import uuid
-import mysql.connector
-
 from tools.gpt_util import get_chatgpt_field, get_chatgpt_fields
 
 
