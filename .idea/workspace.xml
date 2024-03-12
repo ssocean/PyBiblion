@@ -6,8 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" beforeDir="false" afterPath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/furnace/Author.py" beforeDir="false" afterPath="$PROJECT_DIR$/furnace/Author.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -252,7 +252,7 @@
       <workItem from="1708915800504" duration="1462000" />
       <workItem from="1708923914309" duration="11525000" />
       <workItem from="1709293437960" duration="1968000" />
-      <workItem from="1710230372727" duration="2281000" />
+      <workItem from="1710230372727" duration="3118000" />
     </task>
     <servers />
   </component>
@@ -305,7 +305,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/Author.py</url>
-          <line>142</line>
+          <line>140</line>
           <option name="timeStamp" value="56" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
