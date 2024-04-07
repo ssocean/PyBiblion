@@ -249,7 +249,7 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
     rst['I6'] = I6 if not math.isnan(I6) else float('-inf')
     return rst
 
-print(get_IEI('segment anything'))
+# print(get_IEI('segment anything'))
 
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
