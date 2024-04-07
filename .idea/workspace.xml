@@ -6,7 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lesson_101_demo.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/lesson_101_demo.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/demo/test_metrics.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/demo/test_metrics.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/metrics/metric.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrics/metric.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -250,7 +251,8 @@
       <workItem from="1708506048356" duration="4785000" />
       <workItem from="1708915800504" duration="1462000" />
       <workItem from="1708923914309" duration="11525000" />
-      <workItem from="1709293437960" duration="1968000" />
+      <workItem from="1709293437960" duration="2578000" />
+      <workItem from="1709491314832" duration="4316000" />
     </task>
     <servers />
   </component>
@@ -413,12 +415,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ocean/Documents/GitHub/Dynamic_Literature_Review/test_unit/test_metrics.ipynb</url>
-          <line>533</line>
+          <line>565</line>
           <option name="timeStamp" value="114" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ocean/Documents/GitHub/Dynamic_Literature_Review/test_unit/test_metrics.ipynb</url>
-          <line>704</line>
+          <line>736</line>
           <option name="timeStamp" value="116" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
@@ -428,12 +430,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ocean/Documents/GitHub/Dynamic_Literature_Review/test_unit/test_metrics.ipynb</url>
-          <line>260</line>
+          <line>265</line>
           <option name="timeStamp" value="145" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ocean/Documents/GitHub/Dynamic_Literature_Review/test_unit/test_metrics.ipynb</url>
-          <line>258</line>
+          <line>263</line>
           <option name="timeStamp" value="146" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
@@ -443,7 +445,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ocean/Documents/GitHub/Dynamic_Literature_Review/Paper_VIS/plot.ipynb</url>
-          <line>984</line>
+          <line>1036</line>
           <option name="timeStamp" value="167" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
