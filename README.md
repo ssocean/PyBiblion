@@ -4,8 +4,8 @@
 
 ## Introduction
 
-This repository contains the official code implementation for the Paper "A Literature Review of Literature Reviews in Pattern Analysis and Machine
-Intelligence". Our goal is to provide a set of tools to assist researchers and scholars in conducting efficient and in-depth bibliometric analyses in the field.
+This repository contains the official code implementation for the Paper [A Literature Review of Literature Reviews in Pattern Analysis and Machine
+Intelligence](https://arxiv.org/abs/2402.12928). Our goal is to provide a set of tools to assist researchers and scholars in conducting efficient and in-depth bibliometric analyses in the field.
 
 ## Features
 
@@ -16,7 +16,10 @@ Intelligence". Our goal is to provide a set of tools to assist researchers and s
 
 ## Installation
 
-This project is implemented in Python. To get started, you need to install Python and some dependencies. You can install the required dependencies with the following command:
+This project is implemented in Python. To get started, you need to install Python and some dependencies. 
+In most cases, you just need to install the required Python packages according to the missing packages warnings.
+
+Or you may install the required dependencies with the following command:
 
 ```bash
 pip install -r requirements.txt

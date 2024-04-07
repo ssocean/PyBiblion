@@ -1,7 +1,14 @@
 import os.path
 
-base_dir = r'C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\CACHE'#'../CACHE/'
 
+
+import os
+import sys
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+sys.path.append(base_dir)
 def generate_cache_file_name(url='',force_file_name=None):
     if not force_file_name:
         if 'authors?' in url:

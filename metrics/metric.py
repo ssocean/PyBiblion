@@ -184,9 +184,8 @@ import numpy as np
 from scipy.special import comb
 
 @retry()
-def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
+def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,normalized=False):
     spms = get_s2citaions_per_month(title, 2000)
-
     actual_len = 6 if len(spms) >= 6+exclude_last_n_month else len(spms) -exclude_last_n_month
     # print(f'acutal len:{actual_len}')
     if actual_len < 6:
@@ -198,6 +197,8 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
     x = [i for i in range(actual_len)]
     subset = list(spms.items())[exclude_last_n_month:exclude_last_n_month+actual_len][::-1]
     y = [item[1] for item in subset]
+    if normalized:
+        y = [(y_i - min(y)) / (max(y) - min(y)) for y_i in y]
     # 拟合五次贝塞尔曲线
     t = np.linspace(0, 1, 100)
     n = len(x) - 1  # 控制点的数量
@@ -213,7 +214,7 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
         plt.clf()
         fig = plt.figure(figsize=(6, 4), dpi=300)  # Increase DPI for high resolution
         plt.style.use('seaborn-v0_8')
-        plt.plot(x, y, 'o', color='darkorange', label='Control Points')  # darkorange for contrast
+        plt.plot(x, y, 'o', color='darkorange', label='Data Point')  # darkorange for contrast
         plt.plot(curve_x, curve_y, color='steelblue', label='Bezier Curve')  # steelblue for the line
 
         plt.legend()
@@ -230,8 +231,8 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
     dy_dt = np.zeros_like(t)
     # print(y)
     for i in range(n):
-        dx_dt += comb(n - 1, i) * (n - i) * (1 - t) ** (n - i - 1) * t ** i * (x[i + 1] - x[i])
-        dy_dt += comb(n - 1, i) * (n - i) * (1 - t) ** (n - i - 1) * t ** i * (y[i + 1] - y[i])
+        dx_dt += comb(n - 1, i) * (1 - t) ** (n - i - 1) * t ** i * (x[i + 1] - x[i])
+        dy_dt += comb(n - 1, i) * (1 - t) ** (n - i - 1) * t ** i * (y[i + 1] - y[i])
 
     I6 = dy_dt[-1] / dx_dt[-1]
     # print(len(dy_dt))
@@ -249,7 +250,6 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1):
     rst['I6'] = I6 if not math.isnan(I6) else float('-inf')
     return rst
 
-# print(get_IEI('segment anything'))
 
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
@@ -749,7 +749,7 @@ def _get_RQM(ref_obj, ref_type='entity', tncsi_rst=None):
     # print(f'search paper title:{s2paper.title}, which has {len(ref_r)} refs. Due to errors, only count {N_R} papers.')
     return overlap_ratio
 
-def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None):
+def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20):
 
 
     if ref_type == 'title':
@@ -811,7 +811,7 @@ def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None):
     except ZeroDivisionError:
         ARQ = 0
     rst = {}
-    rst['RQM'] = 1 - math.exp(-20 * math.exp(-(1-ARQ) * S_mp))
+    rst['RQM'] = 1 - math.exp(-beta * math.exp(-(1-ARQ) * S_mp))
     rst['ARQ'] = ARQ
     rst['S_mp'] = S_mp
     return rst
@@ -846,7 +846,7 @@ def get_RAD(M_pc):
     # Return the corresponding CDF value
     return cdf[index]
 
-def get_RUI(s2paper,p=10,q=10,mu=1.25, sigma=0.31,):
+def get_RUI(s2paper,p=10,q=10, M=None):
     """
     Calculate the integral of a log-normal distribution from 0 to t.
 
@@ -860,7 +860,8 @@ def get_RUI(s2paper,p=10,q=10,mu=1.25, sigma=0.31,):
     # RAD = stats.lognorm.cdf(t, s=sigma, scale=np.exp(mu))
     RAD = get_RAD(t)
     PC = request_query(s2paper.gpt_keyword,early_date=s2paper.publication_date)
-    MP = request_query(s2paper.gpt_keyword,early_date=get_median_pubdate(datetime.datetime.now(),s2paper.references),later_date=s2paper.publication_date)
+    M = datetime.datetime.now() if not M else M
+    MP = request_query(s2paper.gpt_keyword,early_date=get_median_pubdate(M,s2paper.references),later_date=s2paper.publication_date)
     rst = {}
     rst['RAD'] = RAD
 
@@ -871,7 +872,6 @@ def get_RUI(s2paper,p=10,q=10,mu=1.25, sigma=0.31,):
 
     CDR = N_pc/N_mp
     rst['CDR'] = CDR
-
     rst['RUI'] = p*CDR + q*RAD
     return rst
 # s2paper = S2paper('Image segmentation using deep learning: A survey')
