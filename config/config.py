@@ -1,6 +1,6 @@
 # CONFIG FOR API KEYS
 import openai
-openai.api_base = "https://api.chatanywhere.cn"
+# openai.api_base = "https://api.chatanywhere.cn"
 # semantic scholar API || Free || non-mandatory || If not provided, you may get blocked by S2 for a little while. Try solve this by setting a longer waiting time period. ||You can request a Semantic Scholar API Key via https://www.semanticscholar.org/product/api#api-key-form
 s2api = None
 

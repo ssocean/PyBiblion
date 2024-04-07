@@ -1,17 +1,15 @@
 import json
 import shelve
-import uuid
-from urllib.parse import urlencode
 
 import requests
 from retry import retry
-from scholarly import scholarly
-import requests_cache
-
 from CACHE.CACHE_Config import generate_cache_file_name
 from config.config import s2api
 
-requests_cache.install_cache('.authorCache', expire_after=36000)
+# import requests_cache
+
+
+# requests_cache.install_cache('.authorCache', expire_after=36000)
 
 
 class Author():
