@@ -3,17 +3,18 @@ import shelve
 from urllib.parse import urlencode
 from datetime import datetime
 from retry import retry
-# OPENAI SETUP
 import requests
 from CACHE.CACHE_Config import generate_cache_file_name
 from config.config import *
 from furnace.Author import Author
 from furnace.Publication import Document
+
+
 from tools.gpt_util import get_chatgpt_field, get_chatgpt_fields
 
 
 class S2paper(Document):
-    def __init__(self, ref_obj, ref_type='title', filled_authors=True, force_return=False, use_cache=True,**kwargs):
+    def __init__(self, ref_obj, ref_type='title', filled_authors=True, force_return=False, use_cache=True, **kwargs):
         '''
 
         :param ref_obj: search keywords
@@ -37,7 +38,6 @@ class S2paper(Document):
         self._gpt_keywords = None
         self.use_cache = use_cache
 
-
     @property
     @retry()
     def entity(self, max_tries=5):
@@ -53,7 +53,7 @@ class S2paper(Document):
                 # params = quote_plus(self.ref_obj)
                 # print(params)
                 # fieldsOfStudy=Computer Science&
-                if url in cache and self.use_cache:
+                if url in cache and self.use_cache and cache[url].status_code==200:
                     reply = cache[url]
                 else:
                     session = requests.Session()
@@ -87,18 +87,19 @@ class S2paper(Document):
                     self._entity = response['data'][0]
                     return self._entity
         return self._entity
+
     @property
     def gpt_keyword(self):
         # only one keyword is generated
         if self._gpt_keyword is None:
-            self._gpt_keyword = get_chatgpt_field(self.title,self.abstract,extra_prompt=True)
+            self._gpt_keyword = get_chatgpt_field(self.title, self.abstract, extra_prompt=True)
         return self._gpt_keyword
 
     @property
     def gpt_keywords(self):
         # get multiple keyword at one time
         if self._gpt_keywords is None:
-            self._gpt_keywords = get_chatgpt_fields(self.title,self.abstract,extra_prompt=True)
+            self._gpt_keywords = get_chatgpt_fields(self.title, self.abstract, extra_prompt=True)
         return self._gpt_keywords
 
     @property
@@ -154,22 +155,29 @@ class S2paper(Document):
                         authors.append(author)
                     return authors
                 else:
-                    if s2api is not None:
-                        headers = {
-                            'x-api-key': s2api
-                        }
-                    else:
-                        headers = None
-                    r = requests.get(
-                        f'https://api.semanticscholar.org/graph/v1/paper/{self.s2id}/authors?fields=authorId,externalIds,name,affiliations,homepage,paperCount,citationCount,hIndex,url',
-                        headers=headers
-                    )
-                    for item in r.json()['data']:
-                        author = Author(item['name'], _s2_id=item['authorId'], _s2_url=item['url'],
-                                        _h_index=item['hIndex'], _citationCount=item['citationCount'],
-                                        _paperCount=item['paperCount'])
-                        authors.append(author)
-                    return authors
+                    url = (f'https://api.semanticscholar.org/graph/v1/paper/{self.s2id}/authors?fields=authorId,'
+                           f'externalIds,name,affiliations,homepage,paperCount,citationCount,hIndex,url')
+
+                    with shelve.open(generate_cache_file_name(url)) as cache:
+                        if url in cache and self.use_cache and cache[url].status_code == 200:
+                            r = cache[url]
+                        else:
+                            if s2api is not None:
+                                headers = {
+                                    'x-api-key': s2api
+                                }
+                            else:
+                                headers = None
+                            r = requests.get(
+                                url,
+                                headers=headers
+                            )
+                        for item in r.json()['data']:
+                            author = Author(item['name'], _s2_id=item['authorId'], _s2_url=item['url'],
+                                            _h_index=item['hIndex'], _citationCount=item['citationCount'],
+                                            _paperCount=item['paperCount'])
+                            authors.append(author)
+                        return authors
 
         return None
 
@@ -340,7 +348,7 @@ class S2paper(Document):
                         r = requests.get(url, headers=headers)
                         cache[url] = r
                     if 'data' not in r.json() or r.json()['data'] == []:
-                        is_continue=False
+                        is_continue = False
                     for item in r.json()['data']:
                         # print(item)
                         ref = S2paper(item['citingPaper']['title'])
@@ -352,7 +360,8 @@ class S2paper(Document):
                                 'title': item['citingPaper']['title'], 'venue': item['citingPaper']['venue'],
                                 'citationCount': item['citingPaper']['citationCount'],
                                 'influentialCitationCount': item['citingPaper']['influentialCitationCount'],
-                                'publicationDate': item['citingPaper']['publicationDate'],'authors':item['citingPaper']['authors']}
+                                'publicationDate': item['citingPaper']['publicationDate'],
+                                'authors': item['citingPaper']['authors']}
                         # authors = []
 
                         ref._entity = info
@@ -361,13 +370,16 @@ class S2paper(Document):
             return references
 
         return None
+
+
 # sp = S2paper('segment anything')
 
 # print(sp.references)
 # print(sp.influential_citation_count)
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
-CACHE_FILE = r"C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\CACHE\.queryCache"
+CACHE_FILE = r"cache file path"
+
 
 def request_query(query, sort_rule=None, pub_date: datetime = None, continue_token=None):
     '''
@@ -395,6 +407,7 @@ def request_query(query, sort_rule=None, pub_date: datetime = None, continue_tok
     url = (f"{S2_QUERY_URL}?{params}&fields=url,title,abstract,authors,venue,externalIds,referenceCount,"
            f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
            f"s2FieldsOfStudy,publicationTypes,publicationDate")
+    # print(url)
     with shelve.open(generate_cache_file_name(url)) as cache:
 
         # if pub_date:
@@ -402,9 +415,14 @@ def request_query(query, sort_rule=None, pub_date: datetime = None, continue_tok
         # if continue_token:
         #     url = url+f'$token={continue_token}'
         # print(url)
+        rt = False
         if url in cache:
             reply = cache[url]
-        else:
+            try:
+                response = reply.json()
+            except:
+                rt = True
+        if url not in cache or rt:
             session = requests.Session()
             if s2api is not None:
                 headers = {
@@ -413,16 +431,16 @@ def request_query(query, sort_rule=None, pub_date: datetime = None, continue_tok
             else:
                 headers = None
             reply = session.get(url, headers=headers)
-            cache[url] = reply
 
-            reply = session.get(url)
-        response = reply.json()
+            response = reply.json()
+            cache[url] = reply
 
         if "data" not in response:
             msg = response.get("error") or response.get("message") or "unknown"
             raise Exception(f"error while fetching {reply.url}: {msg}")
 
         return response
+
 
 def relevance_query(query, pub_date: datetime = None):
     '''
@@ -444,9 +462,10 @@ def relevance_query(query, pub_date: datetime = None):
         p_dict['publicationDateOrYear'] = f':{pub_date.year}-{pub_date.month}-{pub_date.day}'
 
     params = urlencode(p_dict)
-    url = (f"https://api.semanticscholar.org/graph/v1/paper/search?{params}&fields=url,title,abstract,authors,venue,referenceCount,"
-           f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
-           f"s2FieldsOfStudy,publicationTypes,publicationDate")
+    url = (
+        f"https://api.semanticscholar.org/graph/v1/paper/search?{params}&fields=url,title,abstract,authors,venue,referenceCount,"
+        f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
+        f"s2FieldsOfStudy,publicationTypes,publicationDate")
     with shelve.open(generate_cache_file_name(url)) as cache:
 
         # if pub_date:
@@ -475,3 +494,4 @@ def relevance_query(query, pub_date: datetime = None):
             raise Exception(f"error while fetching {reply.url}: {msg}")
 
         return response
+
