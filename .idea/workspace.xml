@@ -6,8 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/demo/test_metrics.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/demo/test_metrics.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/metrics/metric.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrics/metric.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lesson_101_demo.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/lesson_101_demo.ipynb" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -253,6 +252,8 @@
       <workItem from="1708923914309" duration="11525000" />
       <workItem from="1709293437960" duration="2578000" />
       <workItem from="1709491314832" duration="4316000" />
+      <workItem from="1712485869986" duration="718000" />
+      <workItem from="1713424665756" duration="196000" />
     </task>
     <servers />
   </component>
@@ -305,22 +306,22 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/Author.py</url>
-          <line>140</line>
+          <line>138</line>
           <option name="timeStamp" value="56" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/semantic_scholar_paper.py</url>
-          <line>70</line>
+          <line>50</line>
           <option name="timeStamp" value="62" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/semantic_scholar_paper.py</url>
-          <line>82</line>
+          <line>62</line>
           <option name="timeStamp" value="65" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/semantic_scholar_paper.py</url>
-          <line>78</line>
+          <line>58</line>
           <option name="timeStamp" value="67" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

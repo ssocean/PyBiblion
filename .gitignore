@@ -27,3 +27,4 @@ database/.ppicache.bak
 *.bak
 *.dat
 *.dir
+*.pyc
