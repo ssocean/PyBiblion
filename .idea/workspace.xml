@@ -5,8 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/demo/icon.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lesson_101_demo.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/lesson_101_demo.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,11 +73,11 @@
       <recent name="C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\pdfminer\generator" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Ocean\Documents\GitHub\PyBiblion\demo" />
       <recent name="C:\Users\Ocean\Documents\GitHub\PyBiblion" />
       <recent name="C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\visualization" />
       <recent name="C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\Paper_VIS" />
       <recent name="C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\tools" />
-      <recent name="C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\metrics" />
     </key>
   </component>
   <component name="RunManager" selected="Python.CACHE_Config">
@@ -253,7 +254,8 @@
       <workItem from="1709293437960" duration="2578000" />
       <workItem from="1709491314832" duration="4316000" />
       <workItem from="1712485869986" duration="718000" />
-      <workItem from="1713424665756" duration="196000" />
+      <workItem from="1713424665756" duration="682000" />
+      <workItem from="1713427302489" duration="279000" />
     </task>
     <servers />
   </component>

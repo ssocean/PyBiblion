@@ -1,4 +1,11 @@
-# PyBiblion 
+<p align="center">
+  <img src="demo/icon.png" alt="icon" width="25%">
+</p>
+
+<h1 align="center">
+  PyBiblion
+</h1>
+
 ### [Early Access Version]
 ######  If you have any issues about the paper or this repo, contact us via Email: oceanytech@gmail.com or issues as you prefer, or in any way that is convenient for you.
 
