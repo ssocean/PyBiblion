@@ -22,7 +22,9 @@ Intelligence](https://arxiv.org/abs/2402.12928). Our goal is to provide a set of
 - **Extensibility**: The code is structured clearly, making it easy for other researchers to modify and extend according to their needs.
 
 ## News and Updates
-* 2024.04.25 🔥 We've got the latest Langchain framework and OpenAI 1.0 version on board now, making everything GPT-related run smoother and faster. 
+* 2024.04.25 🔥 We've integrated the popular Langchain (with OpenAI 1.0 version enabled) into our framework, making everything GPT-related run smoother and faster. 
+Now, you can calculate our metrics with only **one line of code**!!! Just kick off with `S2paper('INPUT TITLE HERE').TNCSI`.
+
 ## Installation
 
 This project is implemented in Python. To get started, you need to install Python and some dependencies. 
