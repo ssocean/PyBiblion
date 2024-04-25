@@ -134,7 +134,7 @@ def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,
     if topic_keyword is None:
 
         topic = get_chatgpt_field(ref_obj, s2paper.abstract)
-        topic = topic[0].replace('.', '')
+        topic = topic.replace('.', '')
         logger.info(
             f'Generated research field is {topic}.')
     else:
