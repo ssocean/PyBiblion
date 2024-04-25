@@ -20,7 +20,9 @@ Intelligence](https://arxiv.org/abs/2402.12928). Our goal is to provide a set of
 - **Data Analysis**: Offers a variety of literature data analysis tools, including but not limited to keyword extraction, and metric calculation.
 - **Visualization**: Generates intuitive charts and diagrams to help understand the distribution and relationships within the literature data.
 - **Extensibility**: The code is structured clearly, making it easy for other researchers to modify and extend according to their needs.
-
+## Update 
+## News and Updates
+* 2024.04.25 🔥 We've got the latest Langchain framework and OpenAI 1.0 version on board now, making everything GPT-related run smoother and faster. 
 ## Installation
 
 This project is implemented in Python. To get started, you need to install Python and some dependencies. 
