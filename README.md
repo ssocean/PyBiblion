@@ -14,6 +14,8 @@
 This repository contains the official code implementation for the Paper [A Literature Review of Literature Reviews in Pattern Analysis and Machine
 Intelligence](https://arxiv.org/abs/2402.12928). Our goal is to provide a set of tools to assist researchers and scholars in conducting efficient and in-depth bibliometric analyses in the field.
 
+Note: The term "biblion" is derived from the ancient Greek word "βιβλίον" (biblíon), means book or literature.
+
 ## Features
 
 - **Meta-data Retrieval**: Automated tools for fetching literature data from multiple databases.
