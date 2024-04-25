@@ -162,3 +162,46 @@ def extract_keywords_from_article_with_gpt(text):
 
     return chat.batch([messages])[0].content
 
+@retry()
+def get_chatgpt_fields(title, abstract, extra_prompt=True,sys_content=None,usr_prompt=None):
+    if not sys_content:
+        sys_content = ("You are a profound researcher who is good at conduct a literature review based on given title and abstract.")
+    if not usr_prompt:
+        usr_prompt = ("Given title and abstract, please provide 5 seaching keywords for me so that I can use them as "
+                      "keywords to search highly related papers from Google Scholar or Semantic Scholar. Please avoid "
+                      "responding with overly general keywords such as deep learning, taxonomy, or surveys, etc., "
+                      "and provide the output in descending order of relevance to the keywords. Answer with the words "
+                      "only in the following format: xxx,xxx,xxx")
+
+    if extra_prompt:
+        messages = [SystemMessage(content=sys_content),HumanMessage(content=f'''{usr_prompt}\n Given Title: Diffusion Models in Vision: A Survey \nGiven Abstract: Denoising 
+             diffusion models represent a recent emerging topic in computer vision, demonstrating remarkable results 
+             in the area of generative modeling. A diffusion model is a deep generative model that is based on two 
+             stages, a forward diffusion stage and a reverse diffusion stage. In the forward diffusion stage, 
+             the input data is gradually perturbed over several steps by adding Gaussian noise. In the reverse stage, 
+             a model is tasked at recovering the original input data by learning to gradually reverse the diffusion 
+             process, step by step. Diffusion models are widely appreciated for the quality and diversity of the 
+             generated samples, despite their known computational burdens, i.e., low speeds due to the high number of 
+             steps involved during sampling. In this survey, we provide a comprehensive review of articles on 
+             denoising diffusion models applied in vision, comprising both theoretical and practical contributions in 
+             the field. First, we identify and present three generic diffusion modeling frameworks, which are based 
+             on denoising diffusion probabilistic models, noise conditioned score networks, and stochastic 
+             differential equations. We further discuss the relations between diffusion models and other deep 
+             generative models, including variational auto-encoders, generative adversarial networks, energy-based 
+             models, autoregressive models and normalizing flows. Then, we introduce a multi-perspective 
+             categorization of diffusion models applied in computer vision. Finally, we illustrate the current 
+             limitations of diffusion models and envision some interesting directions for future research.'''),
+                    AIMessage(content='Denoising diffusion models,deep generative modeling,diffusion models,image generation,noise conditioned score networks'),
+                    HumanMessage(content=f'''{usr_prompt}\n
+                            Given Title: {title}\n
+                            Given Abstract: {abstract}
+                        ''')]
+    else:
+        messages = [SystemMessage(content=sys_content),HumanMessage(content=f'''{usr_prompt}\n
+                Given Title: {title}\n
+                Given Abstract: {abstract}
+            ''')]
+    chat = ChatOpenAI(model="gpt-3.5-turbo")
+    chat.invoke(messages)
+
+    return chat.batch([messages])[0].content
