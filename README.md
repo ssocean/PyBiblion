@@ -7,7 +7,7 @@
 </h1>
 
 ### [Early Access Version]
-######  If you have any issues about the paper or this repo, contact us via Email: oceanytech@gmail.com or issues as you prefer, or in any way that is convenient for you.
+######  The [paper](https://arxiv.org/abs/2402.12928) are currently undergoing peer review, and the code may be adjusted at any time. If you have any issues about the paper or this repo, contact us via Email: oceanytech@gmail.com or issues as you prefer.
 
 ## Introduction
 
