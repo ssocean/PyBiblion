@@ -6,8 +6,17 @@ import time
 from config.config import s2api
 from furnace.semantic_scholar_paper import S2paper, request_query
 from tools.gpt_util import get_chatgpt_field
-from tools.ref_utils import _get_TNCSI_score, get_s2citaions_per_month, get_cite_score
+from tools.ref_utils import _get_TNCSI_score, get_s2citaions_per_month
 import datetime
+from CACHE.CACHE_Config import generate_cache_file_name
+
+
+import requests
+from urllib.parse import urlencode
+import shelve
+
+S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
+S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -31,16 +40,7 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None):
 
     citation, _ = _plot_s2citaions(topic, total_num=1000)
     citation = np.array(citation)
-    # 绘制直方图
-    # plt.hist(citation, bins=1000, density=False, alpha=0.7, color='skyblue')
-    # # 添加标题和标签
-    # plt.title('Distribution of Data')
-    # plt.xlabel('Value')
-    # plt.ylabel('Density')
-    # 显示图形
-    # plt.show()
 
-    # 拟合数据到指数分布
     try:
         params = stats.expon.fit(citation)
     except:
@@ -66,29 +66,6 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None):
             print('saving success')
             plt.savefig(save_img_pth)
         plt.show()
-
-        # # 将图形渲染到画布
-        # canvas = FigureCanvas(plt.gcf())
-        # buffer = io.BytesIO()
-        # canvas.print_png(buffer)
-        #
-        # # 将画布转换为PIL图像对象
-        # buffer.seek(0)
-        # image = Image.open(buffer)
-
-    # # 利用拟合的参数重新绘制概率密度函数图形
-    # plt.plot(x, stats.expon.pdf(x, loc, scale), 'b', label='Fitted PDF')
-    # plt.legend()
-    # plt.show()
-    # from PIL import Image
-    #
-    # # 假设您已经有了图像数据 image_data
-    #
-    # # 创建 PIL 图像对象
-    # image = Image.fromarray(image)
-
-    # 保存为 PNG 文件
-    # image.save("output.png")
     return loc, scale  # , image
 # @retry(tries=3)
 def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE='.ppicache'):
@@ -251,83 +228,11 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
     return rst
 
 
-S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
-S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
-CACHE_FILE = r"C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\CACHE\.queryCache"
-#
-#
-# def request_query(query, CACHE_FILE=CACHE_FILE, sort_rule=None, pub_date: datetime = None, continue_token=None):
-#     '''
-#
-#     :param query:
-#     :param offset:
-#     :param limit:
-#     :param CACHE_FILE:
-#     :param sort: publicationDate:asc - return oldest papers first.
-#                 citationCount:desc - return most highly-cited papers first.
-#                 paperId - return papers in ID order, low-to-high.
-#     :param pub_date:
-#     2019-03-05 on March 3rd, 2019
-#     2019-03 during March 2019
-#     2019 during 2019
-#     2016-03-05:2020-06-06 as early as March 5th, 2016 or as late as June 6th, 2020
-#     1981-08-25: on or after August 25th, 1981
-#     :2015-01 before or on January 31st, 2015
-#     2015:2020 between January 1st, 2015 and December 31st, 2020
-#     :return:
-#     '''
-#     s2api = None
-#     p_dict = dict(query=query)
-#     if pub_date:
-#         p_dict['publicationDateOrYear'] = f':{pub_date.year}-{pub_date.month}-{pub_date.day}'
-#     if continue_token:
-#         p_dict['token'] = continue_token
-#     if sort_rule:
-#         p_dict['sort'] = sort_rule
-#     params = urlencode(p_dict)
-#     url = (f"{S2_QUERY_URL}?{params}&fields=url,title,abstract,authors,venue,externalIds,referenceCount,"
-#            f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
-#            f"s2FieldsOfStudy,publicationTypes,publicationDate")
-#     with shelve.open(generate_cache_file_name(url)) as cache:
-#
-#         # if pub_date:
-#         #     url = url+f'$publicationDateOrYear=:{pub_date.year}-{pub_date.month}-{pub_date.day}'
-#         # if continue_token:
-#         #     url = url+f'$token={continue_token}'
-#         # print(url)
-#         if url in cache:
-#             reply = cache[url]
-#         else:
-#             session = requests.Session()
-#             if s2api is not None:
-#                 headers = {
-#                     'x-api-key': s2api
-#                 }
-#             else:
-#                 headers = None
-#             reply = session.get(url, headers=headers)
-#             cache[url] = reply
-#
-#             reply = session.get(url)
-#         response = reply.json()
-#
-#         if "data" not in response:
-#             msg = response.get("error") or response.get("message") or "unknown"
-#             raise Exception(f"error while fetching {reply.url}: {msg}")
-#
-#         return response
 
 
-from CACHE.CACHE_Config import generate_cache_file_name
-from tools.gpt_util import get_chatgpt_fields
 
-import requests
-from urllib.parse import urlencode
-import shelve
 
-S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
-S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
-CACHE_FILE = r"C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\CACHE\.queryCache"
+
 @retry()
 def request_query(query,  sort_rule=None,  continue_token=None, early_date: datetime.datetime = None, later_date:datetime.datetime = None
                   ):# before_pub_date=True
@@ -428,27 +333,14 @@ def get_Coverage(ref_obj, ref_type='entity', tncsi_rst=None, multiple_keywords=F
         ref_list = [(i.title,i.citation_count) for i in ref_relevant_lst]
         pub_list = [(i.title,i.citation_count) for i in pub_relevant_lst]
 
-        # print(len(ref_list))
-        # print(len(pub_list))
+
         ref_set = set(ref_list)
         pub_set = set(pub_list)
-        # print()
-        # print(len(ref_list))
-        # print(len(pub_set))
+
 
         intersection = ref_set & pub_set
         intersection = list(intersection)
-        # print(anchor_set)
-        #
-        #
-        # print(eval_set)
 
-        # print(len(intersection))
-
-        # exclude = ref_set - set(intersection)
-        # print(exclude)
-        # print(len(exclude))
-        # print(intersection)
         score = 0
         print(f'raw coverage:{len(intersection)/len(pub_set)}')
         for item in intersection:
@@ -486,8 +378,7 @@ def get_Coverage(ref_obj, ref_type='entity', tncsi_rst=None, multiple_keywords=F
     continue_token = None
     if multiple_keywords:
         keywords = s2paper.gpt_keywords
-        # keywords = ['Instance segmentation','panoptic segmentation','semantic segmentation','weakly supervised','unsupervised','domain adaptation']
-        # keywords = ['curriculum learning', 'self-paced learning', 'training strategy']
+
         keywords = [f'"{i}"~25' for i in keywords]
         print(keywords)
         topic = ' | '.join(keywords)
@@ -537,40 +428,6 @@ def get_Coverage(ref_obj, ref_type='entity', tncsi_rst=None, multiple_keywords=F
     coverage = cal_weighted_cocite_rate(ref_r, pub_r[:C],tncsi_rst)
     return coverage
 
-# def get_Timeliness(s2paper):
-#     import statistics
-#     import datetime,math
-#
-#     pub_dates = []
-#     for i in s2paper.references:
-#         if i.publication_date:
-#             pub_dates.append(i.publication_date)
-#     # pub_dates = [i.publication_date for i in s2paper.references]
-#     sorted_list = sorted(pub_dates, reverse=True)
-#     index = 0
-#     while index < len(sorted_list):
-#         try:
-#             sorted_list[index].timestamp()
-#             index += 1
-#         except Exception as e:
-#             print(f"Error: {e}")
-#             del sorted_list[index]
-#
-#     timestamps = [d.timestamp() for d in sorted_list]
-#     if len(timestamps) == 0:
-#         return float('-inf')
-#     median_timestamp = statistics.median(timestamps)
-#     median_value = datetime.datetime.fromtimestamp(median_timestamp)
-#
-#     # median_value = statistics.median(sorted_list)
-#     pub_time = s2paper.publication_date
-#     months_difference = (pub_time - median_value) // datetime.timedelta(days=30)
-#     print(months_difference)
-#     alpha = 0.5
-#     timeliness = 1 / (1 + alpha*math.log(1+months_difference,math.e))
-#     timeliness = 1 / (1 + alpha*math.sqrt(1+months_difference**2))
-#     # print(months_difference, timeliness)
-#     return timeliness
 
 
 from matplotlib.colors import LinearSegmentedColormap
@@ -639,14 +496,7 @@ def plot_time_vs_aFNCSI(sp: S2paper, loc, scale):
             pub_date = i.publication_date
             cite_count = 0 if i.citation_count is None else int(i.citation_count)
             cur_aFNCSI = _get_TNCSI_score(cite_count, loc, scale)
-            # ref_time = len(i._entity['contexts'])
-            # importance = min(math.log10(ref_time + 1),1)
-            # icite_count = 0 if i.influential_citation_count is None else int(i.citation_count)
 
-            # icite_importance = math.log10(icite_count + 1)+1
-            # ref_importance = math.log(ref_time + 1)+1
-
-            # importance = min(icite_importance*ref_importance,50)
             temp_IEI = get_IEI(i.title)['L6']
             temp_IEI = sigmoid(temp_IEI)
 
@@ -689,65 +539,7 @@ def plot_time_vs_aFNCSI(sp: S2paper, loc, scale):
     # 设置 y 轴标签
     plt.ylabel('aTNCSI')
     plt.savefig(f'{sp.title}.svg')
-# import datetime
 
-# @retry()
-# def get_RAI(s2paper):
-#     response = request_query(s2paper.gpt_keyword, CACHE_FILE=CACHE_FILE,sort_rule='citationCount:desc',pub_date=s2paper.publication_date,before_pub_date=False)
-#     N_p = response['total']
-#     N_r = s2paper.reference_count
-#     if N_r == 0:
-#         return float('-inf')
-#     pub_time = s2paper.publication_date
-#     current_time = datetime.datetime.now()
-#     M_mc = (current_time - pub_time) // datetime.timedelta(days=30)
-#
-#
-#     RAI = math.log(1+M_mc,math.e)*(N_p/N_r)
-#     return RAI
-
-# get_Coverage(ref_obj, ref_type='entity', tncsi_rst=None)
-# get_IEI('Self-regulating Prompts: Foundational Model Adaptation without Forgetting',True)
-
-def _get_RQM(ref_obj, ref_type='entity', tncsi_rst=None):
-
-
-    if ref_type == 'title':
-        s2paper = S2paper(ref_obj)
-    elif ref_type == 'entity':
-        s2paper = ref_obj
-    else:
-        return None
-
-    if not tncsi_rst:
-        tncsi_rst = get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,show_PDF=False)
-
-    loc = tncsi_rst['loc']
-    scale = tncsi_rst['scale']
-
-
-
-
-    # get Reference_relevant
-    ref_r = s2paper.references
-    N_R = len(ref_r)
-
-
-    score = 0
-    for item in ref_r:
-        try:
-            score += _get_TNCSI_score(item.citation_count, loc, scale)  # 1
-        except:
-            N_R = N_R - 1
-            continue
-    try:
-
-        overlap_ratio = score / N_R # len(pub_set)
-    except ZeroDivisionError:
-        return 0
-
-    # print(f'search paper title:{s2paper.title}, which has {len(ref_r)} refs. Due to errors, only count {N_R} papers.')
-    return overlap_ratio
 
 def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20):
 
@@ -772,26 +564,12 @@ def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20):
             pub_dates.append(i.publication_date)
     # pub_dates = [i.publication_date for i in s2paper.references]
     sorted_dates = sorted(pub_dates, reverse=True)
-    # index = 0
-    # while index < len(sorted_list):
-    #     try:
-    #         sorted_list[index].timestamp()
-    #         index += 1
-    #     except Exception as e:
-    #         print(f"Error: {e}")
-    #         del sorted_list[index]
-    # 计算前1/3处的索引位置
+
     date_index = len(sorted_dates) // 2
 
-    # 取前1/3处的日期
     index_date = sorted_dates[date_index]
 
-    # timestamps = [d.timestamp() for d in sorted_list]
-    # if len(timestamps) == 0:
-    #     return float('-inf')
-    # median_timestamp = statistics.median(timestamps)
-    # median_value = datetime.datetime.fromtimestamp(median_timestamp)
-    # median_value = statistics.median(sorted_list)
+
     pub_time = s2paper.publication_date
     months_difference = (pub_time - index_date) // datetime.timedelta(days=30)
     S_mp = (months_difference // 6 ) + 1
@@ -874,6 +652,3 @@ def get_RUI(s2paper,p=10,q=10, M=None):
     rst['CDR'] = CDR
     rst['RUI'] = p*CDR + q*RAD
     return rst
-# s2paper = S2paper('Image segmentation using deep learning: A survey')
-# rqm = get_RQM(s2paper, ref_type='entity')
-# print(rqm)

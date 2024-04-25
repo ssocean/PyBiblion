@@ -1,18 +1,6 @@
-import random
-import time
 import warnings
 from datetime import datetime
-
-import arxiv
 from retry import retry
-from scholarly import scholarly
-# OPENAI SETUP
-import openai
-import requests
-import pandas as pd
-import matplotlib.pyplot as plt
-import string
-
 from furnace.Author import Author
 from furnace.Publication import Document
 from tools.Reference import filter_punctuation, get_paper_info_from_REST

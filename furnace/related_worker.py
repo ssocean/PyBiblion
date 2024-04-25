@@ -43,7 +43,7 @@ def simple_query_s2():
     return
 
 
-rst = simple_query()
+rst = simple_query_arxiv()
 papers = []
 for p in rst:
     dct = {

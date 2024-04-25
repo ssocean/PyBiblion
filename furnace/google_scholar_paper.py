@@ -2,28 +2,11 @@ import random
 import time
 import warnings
 from datetime import datetime
-
-import arxiv
 from retry import retry
-from scholarly import scholarly
-# OPENAI SETUP
-import openai
-import requests
-import pandas as pd
-import matplotlib.pyplot as plt
-import string
-
 from furnace.Author import Author
 from furnace.Publication import Document
 from tools.Reference import filter_punctuation, get_paper_info_from_REST
-from scholarly import ProxyGenerator
 
-
-# pg = ProxyGenerator()
-# success = pg.SingleProxy(http = "http://127.0.0.1:7890", https = "http://127.0.0.1:7890")
-#
-# # scholarly.use_proxy(pg)
-# scholarly.use_proxy(pg, pg)
 class Google_paper(Document):
     def __init__(self, ref_obj, ref_type='title', **kwargs):
         super().__init__(ref_obj, **kwargs)
