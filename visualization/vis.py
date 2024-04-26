@@ -3,7 +3,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image  # 导入PIL模块中的Image对象
-import jieba  # 导入中文分词组件
 import wordcloud  # 导入词云模块
 from wordcloud import ImageColorGenerator
 from collections import Counter
@@ -54,7 +53,7 @@ def generate_word_cloud_illustration(content, figure_name, result_name):
 
 # file_name = "story.txt"     # 预读取文本文件名
 file_name = 'test.txt'
-figure_name = r"C:\Users\Ocean\Documents\GitHub\Dynamic_Literature_Review\visualization\circle.png"  # 词频图形状图片文件名
+figure_name = r"visualization\circle.png"  # 词频图形状图片文件名
 result_name = 'result.png'  # 保存的词云图文件名
 word_statis_name = "word_statistics"  # 词频统计绘制的雷达图文件名
 content = read_file(file_name)
