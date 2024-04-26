@@ -127,5 +127,5 @@ def extract_keyword_from_pdf(fpth):
 
 
 if __name__ == "__main__":
-    titles = get_subtitles(r'C:\Users\Ocean\Downloads\2208.00173.pdf')
+    titles = get_subtitles(r'xxx')
     print(titles)

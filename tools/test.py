@@ -29,7 +29,7 @@ ref_eval = get_google('cervical cancer image segmentation', year_high=2018, topk
 
 avg_cite = get_avg_cite_num(ref_eval, year_high=2018)
 
-ref_text = extract_ref(r"C:\Users\Ocean\Downloads\1811.00849.pdf")
+ref_text = extract_ref(r"xxx")
 ref_list = get_ref_list(ref_text)
 print(ref_list)
 import random
