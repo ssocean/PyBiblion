@@ -299,53 +299,60 @@ class S2paper(Document):
             return self.entity.get('influentialCitationCount')
         return None
 
-    def plot_s2citaions(keyword: str, year: str = '2018-2023', total_num=100, CACHE_FILE='.semantischolar'):
+    def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE='.ppicache'):
+        '''
+
+        :param keyword: topic keyword
+        :param year: like 2018-2023 || 2018
+        :param total_num:  fetching up to total_num results
+        :param CACHE_FILE:
+        :return:
+        '''
         l = 0
         citation_count = []
         influentionCC = []
 
-        return citation_count, influentionCC
-
-    @property
-    @retry()
-    def references(self):
-        if self.entity:
-            references = []
-            url = f'https://api.semanticscholar.org/graph/v1/paper/{self.s2id}/references?fields=authors,contexts,intents,isInfluential,venue,title,authors,citationCount,influentialCitationCount,publicationDate,venue&limit=999'
-
+        for i in range(int(total_num / 100)):
+            if year:
+                url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={keyword}&fieldsOfStudy=Computer Science&year={year}&fields=title,year,citationCount,influentialCitationCount&offset={100 * i}&limit=100'
+            else:
+                url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={keyword}&fieldsOfStudy=Computer Science&fields=title,year,citationCount,influentialCitationCount&offset={100 * i}&limit=100'
             with shelve.open(generate_cache_file_name(url)) as cache:
-                # print(url) #references->citations
                 if url in cache:
                     r = cache[url]
                 else:
+
                     if s2api is not None:
                         headers = {
                             'x-api-key': s2api
                         }
                     else:
                         headers = None
-                    r = requests.get(url, headers=headers)
+                    r = requests.get(url, headers=headers, verify=False)
+                    r.raise_for_status()
+                    time.sleep(0.5)
                     cache[url] = r
+
+            # print(r.json())
+
+            try:
                 if 'data' not in r.json():
-                    return []
+                    # logger.info(f'Fetching {l} data from SemanticScholar.')
+                    return citation_count, influentionCC
+                    # raise ConnectionError
+
                 for item in r.json()['data']:
-                    # print(item)
-                    ref = S2paper(item['citedPaper']['title'])
-                    ref.filled_authors = False
-                    info = {'paperId': item['citedPaper']['paperId'], 'contexts': item['contexts'],
-                            'intents': item['intents'], 'isInfluential': item['isInfluential'],
-                            'title': item['citedPaper']['title'], 'venue': item['citedPaper']['venue'],
-                            'citationCount': item['citedPaper']['citationCount'],
-                            'influentialCitationCount': item['citedPaper']['influentialCitationCount'],
-                            'publicationDate': item['citedPaper']['publicationDate']}
-                    # authors = []
+                    if int(item['citationCount']) >= 0:
+                        citation_count.append(int(item['citationCount']))
+                        influentionCC.append(int(item['influentialCitationCount']))
+                        l += 1
+                    else:
+                        print(item['citationCount'])
+            except:
+                continue
 
-                    ref._entity = info
-                    # print(ref.citation_count)
-                    references.append(ref)
-                return references
-
-        return None
+            # logger.info(f'Fetch {l} data from SemanticScholar.')
+        return citation_count, influentionCC
 
     @property
     @retry()
