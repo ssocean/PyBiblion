@@ -6,10 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" beforeDir="false" afterPath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lesson_101_demo.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/lesson_101_demo.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/metrics/metric.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrics/metric.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -258,7 +255,8 @@
       <workItem from="1712485869986" duration="718000" />
       <workItem from="1713424665756" duration="682000" />
       <workItem from="1713427302489" duration="421000" />
-      <workItem from="1714057484563" duration="3518000" />
+      <workItem from="1714057484563" duration="4853000" />
+      <workItem from="1715341843904" duration="154000" />
     </task>
     <servers />
   </component>
