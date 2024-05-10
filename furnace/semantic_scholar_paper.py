@@ -328,7 +328,7 @@ class S2paper(Document):
                         }
                     else:
                         headers = None
-                    r = requests.get(url, headers=headers, verify=False)
+                    r = requests.get(url, headers=headers)
                     r.raise_for_status()
                     time.sleep(0.5)
                     cache[url] = r
@@ -595,7 +595,7 @@ def get_s2citaions_per_month(title, total_num=2000):
                     }
                 else:
                     headers = None
-                r = requests.get(url, headers=headers,verify=False)
+                r = requests.get(url, headers=headers)
                 # time.sleep(0.5)
                 cache[url] = r
 
@@ -748,7 +748,7 @@ def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE=
                     }
                 else:
                     headers = None
-                r = requests.get(url, headers=headers,verify=False)
+                r = requests.get(url, headers=headers)
                 time.sleep(0.5)
                 cache[url] = r
 
