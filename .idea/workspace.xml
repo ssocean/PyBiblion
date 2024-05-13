@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="" />
+    <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" beforeDir="false" afterPath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -253,7 +256,7 @@
       <workItem from="1713424665756" duration="682000" />
       <workItem from="1713427302489" duration="421000" />
       <workItem from="1714057484563" duration="4853000" />
-      <workItem from="1715341843904" duration="487000" />
+      <workItem from="1715341843904" duration="2583000" />
     </task>
     <servers />
   </component>

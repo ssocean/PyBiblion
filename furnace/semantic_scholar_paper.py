@@ -299,6 +299,7 @@ class S2paper(Document):
             return self.entity.get('influentialCitationCount')
         return None
 
+    @retry()
     def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE='.ppicache'):
         '''
 
@@ -328,8 +329,12 @@ class S2paper(Document):
                         }
                     else:
                         headers = None
-                    r = requests.get(url, headers=headers)
-                    r.raise_for_status()
+                    r = requests.get(url, headers=headers, verify=True)
+                    try:
+                        r.raise_for_status()
+                    except Exception as e:
+                        logger.warning(e)
+                        continue
                     time.sleep(0.5)
                     cache[url] = r
 
@@ -718,7 +723,7 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None):
 
 
     return loc, scale  # , image
-# @retry(tries=3)
+@retry()
 def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE='.ppicache'):
     '''
 
