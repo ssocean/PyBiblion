@@ -25,7 +25,6 @@ Note: The term "biblion" is derived from the ancient Greek word "βιβλίον"
 
 ## News and Updates
 * 2024.04.25 🔥 We've integrated the popular Langchain (with OpenAI 1.0 version enabled) into our framework, making everything GPT-related run smoother and faster. 
-Now, you can calculate our metrics with only **one line of code**!!! Just kick off with `S2paper('INPUT TITLE HERE').TNCSI`.
 
 ## Installation
 
@@ -39,7 +38,9 @@ pip install -r requirements.txt
 ```
 
 ## Demo
-You may check lesson_101_demo.ipynb for more details.
+You can calculate our metrics with only **one line of code**!!! Just kick off with `S2paper('INPUT TITLE HERE').TNCSI`.
+
+See more details in lesson_101_demo.ipynb~.
 
 ## Citation
 If you find this work useful for your research, please consider citing it as follows:
