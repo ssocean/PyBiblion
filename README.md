@@ -40,7 +40,9 @@ pip install -r requirements.txt
 ## Demo
 You can calculate our metrics with only **one line of code**!!! Just kick off with 
 
-```S2paper('INPUT TITLE HERE').TNCSI```.
+```python
+S2paper('INPUT TITLE HERE').TNCSI
+```
 
 See more details in lesson_101_demo.ipynb~.
 
