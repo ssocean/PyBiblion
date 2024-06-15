@@ -10,12 +10,12 @@ from arxiv import SortCriterion, SortOrder
 import os
 import re
 from tqdm import tqdm
-from database.DBEntity import AuthorMapping, AoP, PaperMapping
+from database.DBEntity import PaperMapping
 from furnace.Author import Author
 from furnace.arxiv_paper import Arxiv_paper, get_arxiv_id_from_url
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from furnace.google_scholar_paper import Google_paper
 from furnace.semantic_scholar_paper import S2paper
 from tools.PDF_generator import render_pdf
@@ -25,6 +25,10 @@ import os.path
 import arxiv  # 1.4.3
 from tqdm import tqdm
 import re
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
+from urllib.error import URLError
 
 Base = declarative_base()
 
@@ -36,6 +40,11 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
+
+
+# Multi Process SAFE SESSION
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+session_factory = scoped_session(SessionLocal)  # 使用 scoped_session
 
 def replace_invalid_characters(path):
     pattern = r'[<>:"/\\|?*]'
@@ -92,7 +101,7 @@ def file_exists_case_insensitive(id, title, files, extension='pdf'):
 
 
 @retry()
-def redownload(session,out_dir):
+def redownload_single_process(session,out_dir):
     files = [f.lower() for f in os.listdir(out_dir)]
     results = session.query(PaperMapping).all()
     error_list = []
@@ -126,6 +135,42 @@ def redownload(session,out_dir):
                 session.commit()
 
     session.close()
+
+@retry(delay=8)
+def download_paper(row, out_dir):
+    session = session_factory()
+    if row.downloaded_pth is None:
+        pub_url = row.pub_url
+        id = get_arxiv_id_from_url(pub_url)
+
+        try:
+            search = arxiv.Search(id_list=[id]).results()
+            arxiv_paper = next(search)
+            save_path = os.path.join(out_dir, arxiv_paper._get_default_filename())
+            arxiv_paper.download_pdf(dirpath=out_dir)
+            row.downloaded_pth = arxiv_paper._get_default_filename()
+            row.paper_type = 1
+            session.commit()
+            return f"{arxiv_paper._get_default_filename()} downloaded successfully."
+        except URLError:
+            session.rollback()
+
+            return f"{arxiv_paper._get_default_filename()} download failed."
+        except Exception as e:
+            session.rollback()
+
+            return f"Error downloading {arxiv_paper._get_default_filename()}: {str(e)}"
+        finally:
+            session.close()  # 关闭 session
+@retry(delay=6)
+def redownload(out_dir):
+    session = session_factory()
+    results = session.query(PaperMapping).all() # you can add .filter(is_downloaded=0) to only download new papers
+    session.close()  # 关闭 session
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = [executor.submit(download_paper, row, out_dir) for row in results]
+        for future in tqdm(as_completed(futures), total=len(futures)):
+            logger.info(future.result())
 
 
 def simple_query():
