@@ -60,7 +60,13 @@ class S2paper(Document):
         self.force_return = force_return
         self._gpt_keyword = None
         self._gpt_keywords = None
+        self._TNCSI = None
+        self._TNCSI_S = None
+        self._IEI = None
+        self._RQM = None
+        self._RUI = None
         self.use_cache = use_cache
+
 
     @property
     @retry()
@@ -335,7 +341,7 @@ class S2paper(Document):
                     except Exception as e:
                         logger.warning(e)
                         continue
-                    time.sleep(0.5)
+                    time.sleep(3.05)
                     cache[url] = r
 
             # print(r.json())
@@ -413,6 +419,14 @@ class S2paper(Document):
             self._TNCSI = get_TNCSI(self,show_PDF=False)
         return self._TNCSI
 
+    @retry()
+    @property
+    def TNCSI_S(self):
+        if self._TNCSI_S is None:
+            kwd = self.gpt_keyword
+            self._TNCSI_S = get_TNCSI(self,topic_keyword=kwd,show_PDF=False,same_year=True)
+        return self._TNCSI_S
+
     @property
     @retry()
     def IEI(self):
@@ -439,10 +453,6 @@ class S2paper(Document):
             return self._RUI
         return float('-inf')
 
-# sp = S2paper('segment anything')
-
-# print(sp.references)
-# print(sp.influential_citation_count)
 
 
 def request_query(query, sort_rule=None, pub_date: datetime = None, continue_token=None):
@@ -668,7 +678,7 @@ def _get_TNCSI_score(citation:int, loc, scale):
     # print(citation, loc, scale)
     aFNCSI = exponential_cdf(citation, loc, scale)
     return aFNCSI
-def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None):
+def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:datetime=None):
     import numpy as np
     import matplotlib.pyplot as plt
 
@@ -679,34 +689,20 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None):
     from PIL import Image
     import io
 
-
-
-
-    citation, _ = _plot_s2citaions(topic, total_num=1000)
+    citation, _ = _plot_s2citaions(topic, total_num=1000,pub_date=pub_date)
     citation = np.array(citation)
-    # print(citation)
-    # 绘制直方图
-    # plt.hist(citation, bins=1000, density=False, alpha=0.7, color='skyblue')
-    # # 添加标题和标签
-    # plt.title('Distribution of Data')
-    # plt.xlabel('Value')
-    # plt.ylabel('Density')
-    # 显示图形
-    # plt.show()
 
-    # 拟合数据到指数分布
     try:
         params = stats.expon.fit(citation)
     except:
-        # print(citation)
         return None,None
     loc, scale = params
+    if len(citation)<=1:
+        return None, None
 
-    # 生成拟合的指数分布曲线
     x = np.linspace(np.min(citation), np.max(citation), 100)
     pdf = stats.expon.pdf(x, loc, scale)
 
-    # 绘制原始数据和拟合的指数分布曲线
     if show_img or save_img_pth:
         plt.clf()
         plt.figure(figsize=(6, 4))
@@ -754,7 +750,7 @@ def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE=
                 else:
                     headers = None
                 r = requests.get(url, headers=headers)
-                time.sleep(0.5)
+                time.sleep(3.05)
                 cache[url] = r
 
 
@@ -779,14 +775,18 @@ def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE=
         # logger.info(f'Fetch {l} data from SemanticScholar.')
     return citation_count, influentionCC
 @retry(tries=3)
-def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,show_PDF=False):
+def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,show_PDF=False,same_year=False):
     if ref_type == 'title':
         s2paper = S2paper(ref_obj)
     elif ref_type == 'entity':
         s2paper = ref_obj
     else:
         return None
-
+    if s2paper.citation_count is None:
+        rst = {}
+        rst['TNCSI'] = -1
+        rst['topic'] = 'NONE'
+        return rst
     if topic_keyword is None:
 
         topic = get_chatgpt_field(ref_obj, s2paper.abstract)
@@ -796,10 +796,19 @@ def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,
     else:
         topic = topic_keyword
         # logger.info(f'Pre-defined research field is {topic}')
+    if same_year:
+        loc, scale = fit_topic_pdf(topic, topk=1000,save_img_pth=save_img_pth,show_img=show_PDF,pub_date=s2paper.publication_date)
+    else:
+        loc, scale = fit_topic_pdf(topic, topk=1000, save_img_pth=save_img_pth, show_img=show_PDF)
 
-    loc, scale = fit_topic_pdf(topic, topk=2000,save_img_pth=save_img_pth,show_img=show_PDF)
     if loc is not None and scale is not None:
-        TNCSI = _get_TNCSI_score(s2paper.citation_count, loc, scale)
+        try:
+            TNCSI = _get_TNCSI_score(s2paper.citation_count, loc, scale)
+        except ZeroDivisionError as e:
+            rst = {}
+            rst['TNCSI'] = -1
+            rst['topic'] = 'NaN'
+            return rst
         rst = {}
         rst['TNCSI'] = TNCSI
         rst['topic'] = topic
@@ -808,7 +817,12 @@ def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,
 
         return rst
     else:
-        raise FileNotFoundError
+        rst = {}
+        rst['TNCSI'] = -1
+        rst['topic'] = topic
+        rst['loc'] = loc
+        rst['scale'] = scale
+        return rst
 
 
 from retry import retry
@@ -987,27 +1001,12 @@ def get_Coverage(ref_obj, ref_type='entity', tncsi_rst=None, multiple_keywords=F
         ref_list = [(i.title,i.citation_count) for i in ref_relevant_lst]
         pub_list = [(i.title,i.citation_count) for i in pub_relevant_lst]
 
-        # print(len(ref_list))
-        # print(len(pub_list))
         ref_set = set(ref_list)
         pub_set = set(pub_list)
-        # print()
-        # print(len(ref_list))
-        # print(len(pub_set))
 
         intersection = ref_set & pub_set
         intersection = list(intersection)
-        # print(anchor_set)
-        #
-        #
-        # print(eval_set)
 
-        # print(len(intersection))
-
-        # exclude = ref_set - set(intersection)
-        # print(exclude)
-        # print(len(exclude))
-        # print(intersection)
         score = 0
         print(f'raw coverage:{len(intersection)/len(pub_set)}')
         for item in intersection:

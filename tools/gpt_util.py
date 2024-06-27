@@ -22,7 +22,7 @@ def _get_ref_list(text):
     ]
 
     chat = ChatOpenAI(model="gpt-3.5-turbo")
-    chat.invoke(messages)
+
 
     return chat.batch([messages])[0].content
 
@@ -40,7 +40,6 @@ def get_chatgpt_keyword(title, abstract):
     ]
 
     chat = ChatOpenAI(model="gpt-3.5-turbo")
-    chat.invoke(messages)
 
     return chat.batch([messages])[0].content
 
@@ -65,7 +64,7 @@ def check_PAMIreview(title, abstract):
             Answer with the exact following format:Y||N'''),
         ]
     chat = ChatOpenAI(model="gpt-3.5-turbo")
-    chat.invoke(messages)
+
 
     return chat.batch([messages])[0].content
 
@@ -80,7 +79,7 @@ def get_unnum_sectitle(sectitle):
         HumanMessage(content=f'This is the title of section, extract the title without chapter numbering(If chapter numbering exists). Answer with the following format: xxx. \n Section Title: {sectitle}'),
     ]
     chat = ChatOpenAI(model="gpt-3.5-turbo")
-    chat.invoke(messages)
+
 
     return chat.batch([messages])[0].content
 
@@ -113,7 +112,7 @@ def get_chatgpt_field(title, abstract=None, sys_content=None, usr_prompt=None, e
     messages.append(HumanMessage(content=content))
 
     chat = ChatOpenAI(model="gpt-3.5-turbo")
-    chat.invoke(messages)
+
 
     return chat.batch([messages])[0].content
 
@@ -158,7 +157,7 @@ def extract_keywords_from_article_with_gpt(text):
          The text of the first page:{text}''')
     ]
     chat = ChatOpenAI(model="gpt-3.5-turbo")
-    chat.invoke(messages)
+
 
     return chat.batch([messages])[0].content
 
@@ -202,6 +201,6 @@ def get_chatgpt_fields(title, abstract, extra_prompt=True,sys_content=None,usr_p
                 Given Abstract: {abstract}
             ''')]
     chat = ChatOpenAI(model="gpt-3.5-turbo")
-    chat.invoke(messages)
+
 
     return chat.batch([messages])[0].content
