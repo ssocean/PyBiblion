@@ -7,6 +7,7 @@
     <list default="true" id="743ed188-0a66-4d71-b4fa-b4b6c276f9ab" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" beforeDir="false" afterPath="$PROJECT_DIR$/furnace/semantic_scholar_paper.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/gpt_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/tools/gpt_util.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -205,6 +206,14 @@
       </list>
     </recent_temporary>
   </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.17011.127" />
+        <option value="bundled-python-sdk-48aec45f0201-7e9c3bbb6e34-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.17011.127" />
+      </set>
+    </attachedChunks>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -262,6 +271,8 @@
       <workItem from="1713427302489" duration="421000" />
       <workItem from="1714057484563" duration="4853000" />
       <workItem from="1715341843904" duration="2583000" />
+      <workItem from="1718430790952" duration="1544000" />
+      <workItem from="1719474893712" duration="398000" />
     </task>
     <servers />
   </component>
@@ -309,7 +320,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/tools/arxiv_downloader.py</url>
-          <line>141</line>
+          <line>186</line>
           <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -319,17 +330,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/semantic_scholar_paper.py</url>
-          <line>74</line>
+          <line>80</line>
           <option name="timeStamp" value="62" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/semantic_scholar_paper.py</url>
-          <line>86</line>
+          <line>92</line>
           <option name="timeStamp" value="65" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/furnace/semantic_scholar_paper.py</url>
-          <line>82</line>
+          <line>88</line>
           <option name="timeStamp" value="67" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
