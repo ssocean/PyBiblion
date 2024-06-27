@@ -24,7 +24,7 @@ Note: The term "biblion" is derived from the ancient Greek word "βιβλίον"
 - **Extensibility**: The code is structured clearly, making it easy for other researchers to modify and extend according to their needs.
 
 ## News and Updates
-* 2024.06.27 🔧 We Identified a duplicated request bug in most GPT-related function. Besides, we fixed few errors in S2Paper class.
+* 2024.06.27 🔧 We identified a duplicated request bug in most GPT-related function. Besides, we fixed few errors in S2Paper class.
 * 2024.04.25 🔥 We've integrated the popular Langchain (with OpenAI 1.0 version enabled) into our framework, making everything GPT-related run smoother and faster. 
 ## Installation
 
