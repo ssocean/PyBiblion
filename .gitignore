@@ -30,3 +30,4 @@ database/.ppicache.bak
 *.pyc
 .idea/workspace.xml
 /.idea
+.idea/workspace.xml
