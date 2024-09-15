@@ -31,3 +31,4 @@ database/.ppicache.bak
 .idea/workspace.xml
 /.idea
 .idea/workspace.xml
+config/config.py
