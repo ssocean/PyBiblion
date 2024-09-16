@@ -33,3 +33,5 @@ database/.ppicache.bak
 .idea/workspace.xml
 config.py
 
+*.pyc
+cfg/safesession.py

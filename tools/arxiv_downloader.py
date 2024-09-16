@@ -1,147 +1,128 @@
-import logging
+import os
+import json
 import time
-import urllib
-from datetime import datetime
 from urllib.error import URLError
-import ssl
-
-ssl._create_default_https_context = ssl._create_unverified_context
-from arxiv import SortCriterion, SortOrder
-import os
-import re
-from tqdm import tqdm
-from database.DBEntity import PaperMapping
-from furnace.Author import Author
-from furnace.arxiv_paper import Arxiv_paper, get_arxiv_id_from_url
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
-from furnace.google_scholar_paper import Google_paper
-from furnace.semantic_scholar_paper import S2paper
-from tools.PDF_generator import render_pdf
-from tools.gpt_util import *
-import requests
-import os.path
-import arxiv  # 1.4.3
-from tqdm import tqdm
-import re
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-from urllib.error import URLError
-
-Base = declarative_base()
-
-engine = create_engine('mysql+mysqlconnector://root:xxxx@localhost/ripami')
-
-Base.metadata.create_all(engine)
-
-
-Session = sessionmaker(bind=engine)
-session = Session()
-
-import datetime
-import os
-from urllib.error import URLError
-
-import requests
-# from arxiv import arxiv
 import arxiv
-from bs4 import BeautifulSoup
+import threading
+
+from cfg.safesession import session_factory
+from database.DBEntity import PaperMapping
+from furnace.arxiv_paper import Arxiv_paper
+
 from retry import retry
-from tqdm import tqdm
+# 单个搜索结果处理函数@
+@retry(tries=5)
+def process_result(session, result, out_dir, key_word, query):
+    key_words_count = {}
+    error_list = []
 
+    if '/' in result._get_default_filename() or '\\' in result._get_default_filename():
+        return key_words_count, error_list  # 跳过不合法的文件名
 
-def extract_arxiv_ids(url):
-    headers = {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
+    if result.published.year >= 2010:
 
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()  # Ensure the request was successful
-
-    soup = BeautifulSoup(response.content, 'html.parser')
-    dl = soup.find('dl', {'id': 'articles'})
-
-    arxiv_ids = []
-    for dt in dl.find_all('dt'):
-        a_tag = dt.find('a', id=True)
-        if a_tag:
-            arxiv_ids.append(a_tag['id'])
-
-    return arxiv_ids
-def download_papers_webpage(filed='cs.CV',download_folder=None,max_downloads=200,num_threads=4):
-    url = f'https://arxiv.org/list/{filed}/recent?skip=0&show={max_downloads}'
-    aid = extract_arxiv_ids(url)
-    if not os.path.exists(download_folder):
-        os.makedirs(download_folder)
-    client = arxiv.Client()
-    # 创建数据库引擎
-    idlst = [i+'v1' for i in aid]
-    search_by_id = arxiv.Search(id_list=idlst)
-    arxiv_rst = []
-    for result in tqdm(client.results(search_by_id)):
-        arxiv_rst.append(result)
-
-    print(f'Searching papers Done. {len(arxiv_rst)} papers found. Start Downloading.')
-    with ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = [
-            executor.submit(download_single_paper_LTS, result, download_folder) for result in arxiv_rst
-        ]
-        for future in tqdm(as_completed(futures), total=len(futures)):
-            result = future.result()
-            if result:
-                arxiv_logger.info(result)
-@retry(delay = 2, tries= 3)
-def download_single_paper_LTS(result, download_folder):
-    session = session_factory()
-    try:
         arxiv_paper = Arxiv_paper(result, ref_type='entity')
-        data = session.query(PaperMapping).filter(PaperMapping.arxiv_id == arxiv_paper.id).first()
-        if data is None:
-            if download_folder:
-                if not ( os.path.exists(os.path.join(download_folder, result._get_default_filename()))):
-                    arxiv_logger.info(f'{arxiv_paper.id} is not existed in the disk, try downloading it. ')
-                    try:
-                        result.download_pdf(dirpath=download_folder)
-                    except URLError as e:
-                        if os.path.exists(os.path.join(download_folder, result._get_default_filename())):
-                            os.remove(os.path.join(download_folder, result._get_default_filename()))
-                        arxiv_logger.warning(f'{result._get_default_filename()} download failed. Due to {e}. Retrying...')
-                        raise URLError(f'{result._get_default_filename()} download failed. Due to {e}')
-                    except KeyboardInterrupt:
-                        arxiv_logger.info("Operation interrupted by user.")
-                        if os.path.exists(os.path.join(download_folder, result._get_default_filename())):
-                            os.remove(os.path.join(download_folder, result._get_default_filename()))
-                        exit()
-            doc = PaperMapping(arxiv_paper=arxiv_paper)
+        data = session.query(PaperMapping).filter(PaperMapping.id == arxiv_paper.id).first()
 
-            doc.arxiv_authors = ', '.join([a.name for a in arxiv_paper.authors])
-            doc_detail = PaperMapping_detail(
-                idLiterature=doc.idLiterature, arxiv_paper=arxiv_paper,
-            )
-            doc.downloaded_pth = result._get_default_filename()
+        if data is None:  # 当前论文不在数据库中
+            if not os.path.exists(os.path.join(out_dir, result._get_default_filename())):
+                try:
+                    print(result._get_default_filename()+'Downloading...')
+                    result.download_pdf(dirpath=out_dir)
+                except URLError:
+                    time.sleep(4)
+                    raise URLError('process_result error: result.download_pdf(dirpath=out_dir) Failed.')
+                    error_list.append(result._get_default_filename())
+                    return key_words_count, error_list
+
+            doc = PaperMapping(arxiv_paper=arxiv_paper, search_by_keywords=query)
+            doc.download_pth = result._get_default_filename()
             session.add(doc)
-            session.add(doc_detail)
             session.commit()
-            os.rename(os.path.join(download_folder, result._get_default_filename()),os.path.join(download_folder,doc.arxiv_id+'.pdf'))
-            doc.download_date = datetime.datetime.now()
-            doc.valid = -1
-            session.commit()
-            return True
-
         else:
-            arxiv_logger.info(f'Paper {data.idLiterature} is already exist in database')
-            data.last_update_time = datetime.datetime.now()
-            data.download_date = datetime.datetime.now()
+            data.search_by_keywords = query
             session.commit()
-            return False
-    except Exception as e:
-        doc.valid = 0
-        arxiv_logger.error(f"Error processing paper {result._get_default_filename()}: {str(e)}")
-        raise e
-    finally:
-        session.close()
-        return False
+
+        if key_word.lower() not in key_words_count:
+            key_words_count[f'{key_word.lower()}'] = 1
+        else:
+            key_words_count[f'{key_word.lower()}'] += 1
+
+    return key_words_count, error_list
+
+
+def process_keyword(session, key_word, out_dir, lock, total_keywords_count, total_error_list):
+    key_words_count = {}
+    error_list = []
+
+    # 查询规则
+    query = f'(ti:"review" OR ti:"survey") AND (ti: "{key_word.lower()}" OR abs:"{key_word.lower()}")'
+
+    search = arxiv.Search(query=query,
+                          max_results=float('inf'),
+                          sort_by=arxiv.SortCriterion.Relevance,
+                          sort_order=arxiv.SortOrder.Descending)
+    search_rst = []
+
+    for result in search.results():
+        search_rst.append(result)
+    # 使用并行线程池来处理每个搜索结果
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {}
+
+        # 使用for循环来提交任务，并从search_rst中取结果
+        for result in search_rst:
+            future = executor.submit(process_result, session, result, out_dir, key_word, query)
+            futures[future] = result
+
+        for future in as_completed(futures):
+            try:
+                partial_keywords_count, partial_error_list = future.result()
+                # 锁住共享资源以确保线程安全
+                with lock:
+                    for k, v in partial_keywords_count.items():
+                        if k in total_keywords_count:
+                            total_keywords_count[k] += v
+                        else:
+                            total_keywords_count[k] = v
+                    total_error_list.extend(partial_error_list)
+            except Exception as e:
+                print(f"Error processing result for keyword '{key_word}': {str(e)}")
+
+
+def main(session):
+    key_words = ['Action Detection', 'Action Recognition', 'Activity Detection', 'Activity Recognition', 'Adversarial Attack',  'Anomaly Detection', 'Audio Classification', 'Biometric Authentication', 'Biometric Identification',  'Boundary Detection', 'CNN', 'Computer Vision', 'Contrastive Learning', 'Data Mining', 'Data Visualization',  'Depth Estimation', 'Dialogue Modeling', 'Dialogue Systems', 'Diffusion Model', 'Document Analysis',  'Document Analysis and Recognition', 'Document Clustering', 'Document Layout Analysis', 'Document Retrieval',  'Domain Adaptation', 'Edge Detection', 'Emotion Recognition', 'Face Detection', 'Face Recognition',  'Facial Recognition', 'Gesture Analysis', 'Gesture Recognition', 'Graph Mining', 'Hand Gesture Recognition',  'Handwriting Recognition', 'Human Activity Recognition', 'Human Detection', 'Human Pose Estimation',  'Image Captioning', 'Image Classification', 'Image Clustering', 'Image Compression', 'Image Editing',  'Image Enhancement', 'Image Generation', 'Image Inpainting', 'Image Matching', 'Image Quality Assessment',  'Image Recognition', 'Image Reconstruction', 'Image Restoration', 'Image Retrieval', 'Image Segmentation',  'Image-Based Localization', 'Instance Segmentation', 'Knowledge Graph', 'Knowledge Representation',  'Language Modeling', 'Language Modelling', 'Machine Learning Interpretability', 'Machine Translation',  'Medical Image Analysis', 'Medical Image Segmentation', 'Meta-Learning', 'Metric Learning',  'Multi-Label Classification', 'Named Entity Disambiguation', 'Named Entity Recognition',  'Natural Language Processing', 'Object Detection', 'Object Tracking', 'Optical Character Recognition',  'Pattern Matching', 'Pattern Recognition', 'Person Re-Identification', 'Point Cloud', 'Pre-training',  'Pretraining', 'Prompt Learning', 'Question Answering', 'Recommendation Systems', 'Recommender Systems',  'Relation Extraction', 'Remote Sensing', 'Representation Learning', 'Saliency Detection',  'Salient Object Detection', 'Scene Segmentation', 'Scene Understanding', 'Self-Supervised Learning',  'Semantic Segmentation', 'Sentiment Analysis', 'Sentiment Classification', 'Signature Verification',  'Speech Emotion Recognition', 'Speech Enhancement', 'Speech Recognition', 'Speech Synthesis',  'Speech-to-Text Conversion', 'Super-Resolution', 'Superpixels', 'Text Classification', 'Text Clustering',  'Text Generation', 'Text Mining', 'Text Summarization', 'Text-to-Image Generation', 'Text-to-Speech Conversion',  'Text-to-Speech Synthesis', 'Time Series Analysis', 'Time Series Forecasting', 'Topic Detection',  'Topic Modeling', 'Transfer Learning', 'Unsupervised Learning', 'Video Object Segmentation', 'Video Processing',  'Video Summarization', 'Video Understanding', 'Vision Language Model', 'Visual Question Answering',  'Visual Tracking', 'Word Embeddings', 'Zero-Shot Learning']
+
+
+    key_words = list(set([i.lower() for i in key_words]))
+
+
+    out_dir = r'J:\SLR'  # 设置输出路径
+    total_keywords_count = {}
+    total_error_list = []
+    lock = threading.Lock()  # 创建一个锁对象，用于同步
+
+    # 逐个处理每个关键词
+    for key_word in tqdm(key_words):
+        process_keyword(session, key_word, out_dir, lock, total_keywords_count, total_error_list)
+
+    session.close()
+
+    # 保存结果
+    with open(r"C:\Users\Ocean\Documents\GitHub\PyBiblion\tools\kwd_count.json", "w") as json_file:
+        json.dump(total_keywords_count, json_file)
+
+    for err in total_error_list:
+        print(err)
+main(session_factory)
+# search = arxiv.Search(query=f'computer vision survey',
+#                           max_results=float('inf'),
+#                           sort_by=arxiv.SortCriterion.Relevance,
+#                           sort_order=arxiv.SortOrder.Descending)
+# p = []
+# for result in search.results():
+#     p.append(result)
+#
+# print(len(p))

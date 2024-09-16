@@ -6,7 +6,7 @@ import warnings
 from retry import retry
 from scipy.stats import spearmanr, pearsonr
 from CACHE.CACHE_Config import generate_cache_file_name
-from config.config import eskey, openai_key, s2api
+from cfg.config import eskey, openai_key, s2api
 from furnace.semantic_scholar_paper import S2paper, request_query
 import openai
 

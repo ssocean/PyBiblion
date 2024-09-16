@@ -3,7 +3,7 @@ import math
 import statistics
 import time
 
-from config.config import s2api
+from cfg.config import s2api
 from furnace.semantic_scholar_paper import S2paper, request_query
 from tools.gpt_util import get_chatgpt_field
 from tools.ref_utils import _get_TNCSI_score, get_s2citaions_per_month

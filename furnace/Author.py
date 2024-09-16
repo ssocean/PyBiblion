@@ -1,15 +1,13 @@
 import json
 import shelve
-
+import sys
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
 import requests
 from retry import retry
 from CACHE.CACHE_Config import generate_cache_file_name
-from config.config import s2api
-
-# import requests_cache
-
-
-# requests_cache.install_cache('.authorCache', expire_after=36000)
+from cfg.config import *
 
 
 class Author():
@@ -54,9 +52,9 @@ class Author():
                     if self.s2_id in cache:
                         r = cache[self.s2_id]
                     else:
-                        if s2api is not None:
+                        if config.s2api is not None:
                             headers = {
-                                'x-api-key': s2api
+                                'x-api-key': config.s2api
                             }
                         else:
                             headers = None

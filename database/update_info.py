@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from tqdm import tqdm
 
 from CACHE.CACHE_Config import generate_cache_file_name
-from database.DBEntity import AuthorMapping, AoP, PaperMapping, RefMapping, RoP, CoP
+from database.DBEntity import PaperMapping, CoP
 from furnace.Author import Author
 from furnace.arxiv_paper import Arxiv_paper
 
@@ -20,18 +20,7 @@ from sqlalchemy.orm import sessionmaker
 from furnace.google_scholar_paper import Google_paper
 from furnace.semantic_scholar_paper import S2paper
 from tools.gpt_util import *
-
-Base = declarative_base()
-
-ref_cache = r'../CACHE/.refCache'
-
-engine = create_engine('mysql+mysqlconnector://root:xxxx@localhost/ripami')
-
-Base.metadata.create_all(engine)
-
-Session = sessionmaker(bind=engine)
-session = Session()
-
+from cfg.safesession import session
 
 def add_info_to_database(dir: str, session):
     '''
@@ -129,32 +118,6 @@ def update_keyword(dir: str, session):
 import json
 
 
-def update_author(session):
-    '''
-    Use with Caution!
-    :param session:
-    :return:
-    '''
-
-    results = session.query(PaperMapping).all()
-    for row in results:
-
-        authors_str = row.authors.replace("} {", "}, {")
-        author_lst = []
-        for item in json.loads("[" + authors_str + "]"):
-            name = item.get("name")
-            if name:
-                am = AuthorMapping(Author(name))
-
-                author_lst.append(am)
-        session.bulk_save_objects(author_lst)
-        aop = AoP(author_lst)
-        session.add(aop)
-
-        row.aop = aop.idaop
-
-    session.commit()
-
 def get_keywords():
     results = session.query(PaperMapping).all()
     rst = []
@@ -203,7 +166,7 @@ def update_s2(session, mandatory_update=False):
 
 # update_s2(session)
 import json
-from config.config import *
+from cfg.config import *
 from sqlalchemy import and_
 from retry import retry
 from sqlalchemy.sql import text
@@ -340,31 +303,31 @@ def gpt_process(session):
     results = session.query(PaperMapping).all()
     for row in tqdm(results):
         # print(row.title)
-        if row.gpt_keywords is None:
-            keywords = get_chatgpt_keyword(row.title, row.abstract)
-
-            keywords = [keyword.replace('.', '').replace("'", "").replace('"', "") for keyword in keywords]
-
-            keywords = keywords[:5]
-            # row.gpt_keywords = ','.join(keywords)
-            row.gpt_keywords = ','.join(keywords)
-
-            session.commit()
-        else:
-            row.gpt_keywords = row.gpt_keywords.replace('.', '').replace("'", "").replace('"', "")
-            session.commit()
+        # if row.gpt_keywords is None:
+        #     keywords = get_chatgpt_keyword(row.title, row.abstract)
+        #
+        #     keywords = [keyword.replace('.', '').replace("'", "").replace('"', "") for keyword in keywords]
+        #
+        #     keywords = keywords[:5]
+        #     # row.gpt_keywords = ','.join(keywords)
+        #     row.gpt_keywords = ','.join(keywords)
+        #
+        #     session.commit()
+        # else:
+        #     row.gpt_keywords = row.gpt_keywords.replace('.', '').replace("'", "").replace('"', "")
+        #     session.commit()
         if row.is_review is None:
             status = check_PAMIreview(row.title, row.abstract)
-            if status == ('N' or 'n'):
+            if not status:
                 row.is_review = 0
-            if status == ('Y' or 'y'):
+            if status:
                 row.is_review = 1
             session.commit()
         print(f'{row.title}||{row.is_review}||{row.gpt_keywords}')
     session.close()
 
 
-# gpt_process(session)
+gpt_process(session)
 # update_s2_ref(session)
 
 
@@ -466,8 +429,9 @@ def update_gpt_keyword(session):
     session.close()
 
 if __name__ == "__main__":
+    pass
     # update_gpt_keyword(session)
-    sync_folder_to_database(session,dir=r'E:\download_paper')
+    # sync_folder_to_database(session,dir=r'E:\download_paper')
     # update_official_keywords(r'E:/download_paper', session)
     # insert_idLiterature_into_CoP(session)
     # update_s2_citation(session)

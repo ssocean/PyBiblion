@@ -1,10 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text
 from sqlalchemy.ext.declarative import declarative_base
-
-from furnace.Author import Author
 from furnace.arxiv_paper import Arxiv_paper
 from furnace.semantic_scholar_paper import S2paper
 
@@ -23,15 +21,15 @@ class PaperMapping(Base):
     publication_source = Column(String(255))
     source_type = Column(String(255))
     keywords = Column(String(255))
-    abstract = Column(String)
+    abstract = Column(Text)
     citation_count = Column(Integer)
-    references = Column(String)
+    references = Column(Text)
     pub_url = Column(String(255))
-    comment = Column(String)
+    comment = Column(Text)
     journal_ref = Column(String(255))
-    authors = Column(String)
+    authors = Column(Text)
     gpt_keywords = Column(String(255))
-
+    download_pth = Column(Text)
     search_by_keywords = Column(String(255))
     aop = Column(String(36))
     # primary_category= Column(String(45))
@@ -41,7 +39,7 @@ class PaperMapping(Base):
     s2_publication_date = Column(DateTime, default=None)
     s2_tldr = Column(String(255))
     s2_DOI = Column(String(255))
-    s2_pub_info = Column(String)
+    s2_pub_info = Column(Text)
     s2_pub_url = Column(String(255))
     s2_citation_count = Column(Integer)
     s2_reference_count = Column(Integer)
@@ -50,12 +48,24 @@ class PaperMapping(Base):
     valid = Column(Integer)
     is_review = Column(Integer)
     last_update_time = Column(DateTime, default=datetime.now())
-    reference_details = Column(String)
+    reference_details = Column(Text)
     authors_num = Column(Integer)
     has_been_downloaded = Column(Integer)
     gpt_keyword = Column(String(255))
     TNCSI = Column(Float)
-
+    TNCSI_S = Column(Float)
+    RQM = Column(Float)
+    ARQ = Column(Float)
+    SMP = Column(Float)
+    RUI = Column(Float)
+    IEI = Column(Float)
+    page_count = Column(Integer)
+    word_count = Column(Integer)
+    review_type = Column(String(255))
+    propose_taxonomy = Column(Integer)
+    benchmark = Column(Integer)
+    propose_new_method = Column(Integer)
+    type_MC_CO = Column(Integer) #1 Method clustering 2 challenge oriented 3 others
     def __init__(self, arxiv_paper: Arxiv_paper = None, s2_paper: S2paper = None, search_by_keywords=None):
         if arxiv_paper is not None:
             # 生成UUID
@@ -105,3 +115,18 @@ class PaperMapping(Base):
 
 
 
+
+class CoP(Base):
+    __tablename__ = 'cop'  # 映射到数据库中的表名
+    idCoP = Column(String(36), primary_key=True)
+    s2_id = Column(String(45),unique=True)
+    citation = Column(Text)
+    full_citation = Column(Text)
+
+
+    def __init__(self, s2_id,citation):
+        # 生成UUID
+        self.idCoP = str(uuid.uuid4())
+        self.s2_id = s2_id
+        self.citation = citation
+        self.full_citation = None

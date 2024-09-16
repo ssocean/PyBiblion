@@ -1,5 +1,8 @@
 import random
-
+import sys
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
 from retry import retry
 
 import re
@@ -14,7 +17,7 @@ import statistics
 import time
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from config.config import s2api
+from cfg.config import s2api
 
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
@@ -419,8 +422,8 @@ class S2paper(Document):
             self._TNCSI = get_TNCSI(self,show_PDF=False)
         return self._TNCSI
 
-    @retry()
     @property
+    @retry()
     def TNCSI_S(self):
         if self._TNCSI_S is None:
             kwd = self.gpt_keyword

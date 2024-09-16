@@ -1,12 +1,9 @@
 import os
 from retry import retry
-API_SECRET_KEY = "xxx"
-BASE_URL = "xxx"
-os.environ["OPENAI_API_KEY"] = API_SECRET_KEY
-os.environ["OPENAI_API_BASE"] = BASE_URL
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langchain_community.chat_models.openai import ChatOpenAI
+from cfg.config import *
 def _get_ref_list(text):
     messages = [
         SystemMessage(content="You are a researcher, who is good at reading academic paper, and familiar with all of the "
@@ -44,29 +41,39 @@ def get_chatgpt_keyword(title, abstract):
     return chat.batch([messages])[0].content
 
 
+
+from langchain.chat_models import ChatOpenAI
+from langchain.schema import SystemMessage, HumanMessage
 @retry(delay=6,)
 def check_PAMIreview(title, abstract):
     messages = [
-            SystemMessage(
-                content="You are a profound researcher in the field of artificial intelligence who is good at "
-                        "identifying whether a paper is a survey or review paper in the field of pattern analysis and "
-                        "machine intelligence."
-                    "Note that not all paper that its title contain survey or review is a review paper. "
-                    "Here are some examples: 'transformers in medical image analysis: a review' is a survey paper. "
-                        "'Creating a Scholarly Knowledge Graph from Survey Article Tables' is Not a survey. "
-                        "'Providing Insights for Open-Response Surveys via End-to-End Context-Aware Clustering' is "
-                        "Not a survey. 'sifn: a sentiment-aware interactive fusion network for review-based item "
-                        "recommendation' is Not a review."
-),
-            HumanMessage(content=f'''Given title and abstract, identify whether the given paper is a review or survey paper (answer with Y or N)
-            Given Title: {title}
-            Given Abstract: {abstract}
-            Answer with the exact following format:Y||N'''),
-        ]
-    chat = ChatOpenAI(model="gpt-3.5-turbo")
+        SystemMessage(
+            content=(
+                "You are a profound researcher in the field of artificial intelligence who is good at "
+                "identifying whether a paper is a survey or literature review paper. "
+                "Note that not all papers that have 'survey' or 'review' in the title are review papers. "
+                "Here are some examples:\n"
+                "- 'Transformers in Medical Image Analysis: A Review' is a survey paper.\n"
+                "- 'Creating a Scholarly Knowledge Graph from Survey Article Tables' is not a survey.\n"
+                "- 'Providing Insights for Open-Response Surveys via End-to-End Context-Aware Clustering' is not a survey.\n"
+                "- 'SIFN: A Sentiment-Aware Interactive Fusion Network for Review-Based Item Recommendation' is not a review."
+            )
+        ),
+        HumanMessage(
+            content=(
+                f"Based on the provided title and abstract, determine whether the paper is a literature review or survey paper. "
+                f"Respond with 'Y' if it is a literature review or survey paper, and 'N' if it is not.\n"
+                f"Given Title: {title}\n"
+                f"Given Abstract: {abstract}\n"
+                f"Answer with the exact following format: Y||N"
+            )
+        ),
+    ]
+    chat = ChatOpenAI(model_name="gpt-3.5-turbo")
+    response = chat(messages)
+    return 'y' in response.content.strip().lower()
 
 
-    return chat.batch([messages])[0].content
 
 
 def get_unnum_sectitle(sectitle):
