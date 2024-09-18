@@ -23,7 +23,7 @@ S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 CACHE_FILE = r"CACHE\.queryCache"
 
-
+from filelock import Timeout, FileLock
 from CACHE.CACHE_Config import generate_cache_file_name
 
 
@@ -369,6 +369,62 @@ class S2paper(Document):
         return citation_count, influentionCC
 
     @property
+    @retry(delay=6)
+    def references(self):
+        if self.entity:
+            references = []
+            url = f'https://api.semanticscholar.org/graph/v1/paper/{self.s2id}/references?fields=authors,contexts,intents,isInfluential,venue,title,authors,citationCount,influentialCitationCount,publicationDate,venue&limit=999'
+            cache_file = generate_cache_file_name(url)
+            lock = FileLock(cache_file + ".lock")
+
+            with lock:
+                try:
+                    cache = shelve.open(cache_file)
+                except Exception as e:
+                    print(f"Error opening shelve: {e}")
+                    cache = shelve.open(cache_file)  # 尝试重新打开，或者根据你的需要处理
+                finally:
+                    if 'cache' in locals():
+                        with cache:
+                            if url in cache:
+                                r = cache[url]
+                            else:
+                                if s2api is not None:
+                                    headers = {
+                                        'x-api-key': s2api
+                                    }
+                                else:
+                                    headers = None
+                                r = requests.get(url, headers=headers)
+
+                                r.raise_for_status()
+
+                                cache[url] = r
+                            if 'data' not in r.json() or r is None or r.json()['data'] is None or r.json() is None:
+                                return []
+
+                            for item in r.json()['data']:
+                                # print(item)
+                                ref = S2paper(item['citedPaper']['title'])
+                                ref.filled_authors = False
+                                info = {'paperId': item['citedPaper']['paperId'], 'contexts': item['contexts'],
+                                        'intents': item['intents'], 'isInfluential': item['isInfluential'],
+                                        'title': item['citedPaper']['title'], 'venue': item['citedPaper']['venue'],
+                                        'citationCount': item['citedPaper']['citationCount'],
+                                        'influentialCitationCount': item['citedPaper']['influentialCitationCount'],
+                                        'publicationDate': item['citedPaper']['publicationDate']}
+                                # authors = []
+
+                                ref._entity = info
+                                # print(ref.citation_count)
+                                references.append(ref)
+
+                            return references
+
+
+        return None
+
+    @property
     @retry()
     def citations_detail(self):
         if self.entity:
@@ -391,6 +447,7 @@ class S2paper(Document):
                         else:
                             headers = None
                         r = requests.get(url, headers=headers)
+                        r.raise_for_status()
                         cache[url] = r
                     if 'data' not in r.json() or r.json()['data'] == []:
                         is_continue = False
@@ -416,14 +473,14 @@ class S2paper(Document):
 
         return None
     @property
-    @retry()
+    @retry(tries=5)
     def TNCSI(self):
         if self._TNCSI is None:
             self._TNCSI = get_TNCSI(self,show_PDF=False)
         return self._TNCSI
 
     @property
-    @retry()
+    @retry(tries=5)
     def TNCSI_S(self):
         if self._TNCSI_S is None:
             kwd = self.gpt_keyword
@@ -431,7 +488,7 @@ class S2paper(Document):
         return self._TNCSI_S
 
     @property
-    @retry()
+    @retry(tries=5)
     def IEI(self):
         if self.publication_date is not None and self.reference_count != 0:
             if self._IEI is None:
@@ -440,7 +497,7 @@ class S2paper(Document):
         return float('-inf')
 
     @property
-    @retry()
+    @retry(tries=5)
     def RQM(self):
         if self.publication_date is not None and self.reference_count != 0:
             if self._RQM is None:
@@ -448,7 +505,7 @@ class S2paper(Document):
             return self._RQM
         return float('-inf')
     @property
-    @retry()
+    @retry(tries=5)
     def RUI(self):
         if self.publication_date is not None and self.reference_count != 0:
             if self._RUI is None:
@@ -458,65 +515,7 @@ class S2paper(Document):
 
 
 
-def request_query(query, sort_rule=None, pub_date: datetime = None, continue_token=None):
-    '''
-    :param query: keyword
-    :param sort_rule: publicationDate:asc - return oldest papers first. || citationCount:desc - return most highly-cited papers first. ||paperId - return papers in ID order, low-to-high.
-    :param pub_date:
-    2019-03-05 on March 3rd, 2019
-    2019-03 during March 2019
-    2019 during 2019
-    2016-03-05:2020-06-06 as early as March 5th, 2016 or as late as June 6th, 2020
-    1981-08-25: on or after August 25th, 1981
-    :2015-01 before or on January 31st, 2015
-    2015:2020 between January 1st, 2015 and December 31st, 2020
-    :return:
-    '''
-    s2api = None
-    p_dict = dict(query=query)
-    if pub_date:
-        p_dict['publicationDateOrYear'] = f':{pub_date.year}-{pub_date.month}-{pub_date.day}'
-    if continue_token:
-        p_dict['token'] = continue_token
-    if sort_rule:
-        p_dict['sort'] = sort_rule
-    params = urlencode(p_dict)
-    url = (f"{S2_QUERY_URL}?{params}&fields=url,title,abstract,authors,venue,externalIds,referenceCount,"
-           f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
-           f"s2FieldsOfStudy,publicationTypes,publicationDate")
-    # print(url)
-    with shelve.open(generate_cache_file_name(url)) as cache:
 
-        # if pub_date:
-        #     url = url+f'$publicationDateOrYear=:{pub_date.year}-{pub_date.month}-{pub_date.day}'
-        # if continue_token:
-        #     url = url+f'$token={continue_token}'
-        # print(url)
-        rt = False
-        if url in cache:
-            reply = cache[url]
-            try:
-                response = reply.json()
-            except:
-                rt = True
-        if url not in cache or rt:
-            session = requests.Session()
-            if s2api is not None:
-                headers = {
-                    'x-api-key': s2api
-                }
-            else:
-                headers = None
-            reply = session.get(url, headers=headers)
-
-            response = reply.json()
-            cache[url] = reply
-
-        if "data" not in response:
-            msg = response.get("error") or response.get("message") or "unknown"
-            raise Exception(f"error while fetching {reply.url}: {msg}")
-
-        return response
 
 
 def relevance_query(query, pub_date: datetime = None):
@@ -681,7 +680,7 @@ def _get_TNCSI_score(citation:int, loc, scale):
     # print(citation, loc, scale)
     aFNCSI = exponential_cdf(citation, loc, scale)
     return aFNCSI
-def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:datetime=None):
+def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:datetime=None,mode=1):
     import numpy as np
     import matplotlib.pyplot as plt
 
@@ -692,20 +691,35 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:d
     from PIL import Image
     import io
 
-    citation, _ = _plot_s2citaions(topic, total_num=1000,pub_date=pub_date)
-    citation = np.array(citation)
 
+
+
+    citation, _ = _plot_s2citaions(topic, total_num=1000,pub_date=pub_date,mode=mode)
+    citation = np.array(citation)
+    # print(citation)
+    # 绘制直方图
+    # plt.hist(citation, bins=1000, density=False, alpha=0.7, color='skyblue')
+    # # 添加标题和标签
+    # plt.title('Distribution of Data')
+    # plt.xlabel('Value')
+    # plt.ylabel('Density')
+    # 显示图形
+    # plt.show()
+
+    # 拟合数据到指数分布
     try:
         params = stats.expon.fit(citation)
     except:
+        # print(citation)
         return None,None
     loc, scale = params
     if len(citation)<=1:
         return None, None
-
+    # 生成拟合的指数分布曲线
     x = np.linspace(np.min(citation), np.max(citation), 100)
     pdf = stats.expon.pdf(x, loc, scale)
 
+    # 绘制原始数据和拟合的指数分布曲线
     if show_img or save_img_pth:
         plt.clf()
         plt.figure(figsize=(6, 4))
@@ -722,8 +736,8 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:d
 
 
     return loc, scale  # , image
-@retry()
-def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE='.ppicache'):
+@retry(delay=6)
+def _plot_s2citaions(keyword: str, year: str = None, total_num=1000, pub_date:datetime=None,mode=1):
     '''
 
     :param keyword: topic keyword
@@ -732,53 +746,109 @@ def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE=
     :param CACHE_FILE:
     :return:
     '''
-    l = 0
     citation_count = []
     influentionCC = []
-    with shelve.open(CACHE_FILE) as cache:
-        for i in range(int(total_num / 100)):
+
+    if not pub_date:
+        publicationDateOrYear = ''
+        date_six_months_ago = None
+        date_six_months_later = None
+    else:
+        # 计算半年前的日期
+        six_months = timedelta(days=183)  # 大约半年的天数
+        date_six_months_ago = pub_date - six_months
+
+        # 计算半年后的日期
+        date_six_months_later = pub_date + six_months
+
+        # 格式化日期范围为 "YYYY-MM-DD:YYYY-MM-DD"
+        publicationDateOrYear = f"&publicationDateOrYear={date_six_months_ago.strftime('%Y-%m')}:{date_six_months_later.strftime('%Y-%m')}"
+
+
+    if mode == 1:
+        # publicationDateOrYear 2016-03-05:2020-06-06
+        for i in range(int(total_num // 100)):
             if year:
                 url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={keyword}&fieldsOfStudy=Computer Science&year={year}&fields=title,year,citationCount,influentialCitationCount&offset={100 * i}&limit=100'
             else:
-                url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={keyword}&fieldsOfStudy=Computer Science&fields=title,year,citationCount,influentialCitationCount&offset={100 * i}&limit=100'
+                url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={keyword}{publicationDateOrYear}&fieldsOfStudy=Computer Science&fields=title,year,citationCount,influentialCitationCount&offset={100 * i}&limit=100'
+            # print(url)
+            cache_file = generate_cache_file_name(url)
+            lock = FileLock(cache_file + ".lock")
 
-            if url in cache:
-                r = cache[url]
-            else:
+            with lock:
+                try:
+                    cache = shelve.open(cache_file)
+                except Exception as e:
+                    print(f"Error opening shelve: {e}")
+                    cache = shelve.open(cache_file)  # 尝试重新打开，或者根据你的需要处理
+                finally:
+                    if 'cache' in locals():
+                        with cache:
+                            if url in cache:
+                                r = cache[url]
+                            else:
 
-                if s2api is not None:
-                    headers = {
-                        'x-api-key': s2api
-                    }
-                else:
-                    headers = None
-                r = requests.get(url, headers=headers)
-                time.sleep(3.05)
-                cache[url] = r
+                                if s2api is not None:
+                                    headers = {
+                                        'x-api-key': s2api
+                                    }
+                                else:
+                                    headers = None
+                                r = requests.get(url, headers=headers)
+                                if 'not available' in r.text:
+                                    break
+                                r.raise_for_status()
 
-
-            # print(r.json())
-
+                                # time.sleep(0.2)
+                                cache[url] = r
+            #"fish ladder"~3
             try:
-                if 'data' not in r.json():
-                    # logger.info(f'Fetching {l} data from SemanticScholar.')
-                    return citation_count, influentionCC
-                    # raise ConnectionError
+                response = r.json()
+            except Exception as e:
+                return citation_count, influentionCC
+            if 'data' not in response:
+                # logger.info(f'Fetching {l} data from SemanticScholar.')
+                return citation_count, influentionCC
+                # raise ConnectionError
 
-                for item in r.json()['data']:
-                    if int(item['citationCount']) >= 0:
-                        citation_count.append(int(item['citationCount']))
-                        influentionCC.append(int(item['influentialCitationCount']))
-                        l += 1
-                    else:
-                        print(item['citationCount'])
-            except:
-                continue
+            for item in r.json()['data']:
+                if int(item['citationCount']) >= 0:
+                    citation_count.append(int(item['citationCount']))
+                    influentionCC.append(int(item['influentialCitationCount']))
+                else:
+                    print(item['citationCount'])
+            # logger.info(f'Fetch {l} data from SemanticScholar.')
+        return citation_count, influentionCC
+    elif mode == 2:
 
-        # logger.info(f'Fetch {l} data from SemanticScholar.')
-    return citation_count, influentionCC
+        query = f'"{keyword}"~3'
+        continue_token = None
+        C=1000
+        for i in range(0, C, 1000):
+            if continue_token is None:
+                response = request_query(query, early_date=date_six_months_ago,later_date=date_six_months_later)
+            else:
+                response = request_query(query,continue_token=continue_token,early_date=date_six_months_ago,later_date=date_six_months_later)
+            if "token" in response:
+                continue_token = response['token']
+
+            if 'data' not in response:
+                # logger.info(f'Fetching {l} data from SemanticScholar.')
+                return citation_count, influentionCC
+                # raise ConnectionError
+
+            for item in response['data']:
+                if int(item['citationCount']) >= 0:
+                    citation_count.append(int(item['citationCount']))
+                    influentionCC.append(int(item['influentialCitationCount']))
+                else:
+                    print(item['citationCount'])
+
+        return citation_count, influentionCC
+
 @retry(tries=3)
-def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,show_PDF=False,same_year=False):
+def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,show_PDF=False,same_year=False,mode=1):
     if ref_type == 'title':
         s2paper = S2paper(ref_obj)
     elif ref_type == 'entity':
@@ -790,19 +860,16 @@ def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,
         rst['TNCSI'] = -1
         rst['topic'] = 'NONE'
         return rst
-    if topic_keyword is None:
 
-        topic = get_chatgpt_field(ref_obj, s2paper.abstract)
-        topic = topic.replace('.', '')
-        logger.info(
-            f'Generated research field is {topic}.')
+    if topic_keyword is None:
+        topic = s2paper.gpt_keyword
     else:
         topic = topic_keyword
-        # logger.info(f'Pre-defined research field is {topic}')
+
     if same_year:
-        loc, scale = fit_topic_pdf(topic, topk=1000,save_img_pth=save_img_pth,show_img=show_PDF,pub_date=s2paper.publication_date)
+        loc, scale = fit_topic_pdf(topic, topk=1000,save_img_pth=save_img_pth,show_img=show_PDF,pub_date=s2paper.publication_date,mode=mode)
     else:
-        loc, scale = fit_topic_pdf(topic, topk=1000, save_img_pth=save_img_pth, show_img=show_PDF)
+        loc, scale = fit_topic_pdf(topic, topk=1000, save_img_pth=save_img_pth, show_img=show_PDF,mode=mode)
 
     if loc is not None and scale is not None:
         try:
@@ -827,7 +894,6 @@ def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,
         rst['scale'] = scale
         return rst
 
-
 from retry import retry
 import matplotlib.pyplot as plt
 import numpy as np
@@ -847,8 +913,15 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
     x = [i for i in range(actual_len)]
     subset = list(spms.items())[exclude_last_n_month:exclude_last_n_month+actual_len][::-1]
     y = [item[1] for item in subset]
+
     if normalized:
-        y = [(y_i - min(y)) / (max(y) - min(y)) for y_i in y]
+        min_y = min(y)
+        max_y = max(y)
+        range_y = max_y - min_y
+        if range_y == 0:
+            y = [0 for _ in y]  # 或者 y = [1 for _ in y], 根据你的需求
+        else:
+            y = [(y_i - min_y) / range_y for y_i in y]
     # 拟合五次贝塞尔曲线
     t = np.linspace(0, 1, 100)
     n = len(x) - 1  # 控制点的数量
@@ -860,6 +933,7 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
         curve_x += comb(n, i) * (1 - t) ** (n - i) * t ** i * x[i]
         curve_y += comb(n, i) * (1 - t) ** (n - i) * t ** i * y[i]
     if show_img or save_img_pth:
+        print('IEI绘图执行')
         # 绘制曲线
         plt.clf()
         fig = plt.figure(figsize=(6, 4), dpi=300)  # Increase DPI for high resolution
@@ -892,9 +966,9 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
         # print((curve_x[i-1],curve_y[i-1]))
         slope_avg.append(dy_dt[i] / dx_dt[i])
     slope_avg.append(I6)
-    print(slope_avg)
-    print('平均', sum(slope_avg) / 6)
-    print("瞬时斜率:", I6)
+    # print(slope_avg)
+    # print('平均', sum(slope_avg) / 6)
+    # print("瞬时斜率:", I6)
     rst = {}
     rst['L6'] = sum(slope_avg) / 6 if not math.isnan(sum(slope_avg)) else float('-inf')
     rst['I6'] = I6 if not math.isnan(I6) else float('-inf')
@@ -903,93 +977,6 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
 
 
 
-
-@retry()
-def request_query(query,  sort_rule=None,  continue_token=None, early_date: datetime = None, later_date:datetime = None
-                  ):# before_pub_date=True
-    '''
-
-    :param query:
-    :param offset:
-    :param limit:
-    :param CACHE_FILE:
-    :param sort: publicationDate:asc - return oldest papers first.
-                citationCount:desc - return most highly-cited papers first.
-                paperId - return papers in ID order, low-to-high.
-    :param pub_date:
-    2019-03-05 on March 3rd, 2019
-    2019-03 during March 2019
-    2019 during 2019
-    2016-03-05:2020-06-06 as early as March 5th, 2016 or as late as June 6th, 2020
-    1981-08-25: on or after August 25th, 1981
-    :2015-01 before or on January 31st, 2015
-    2015:2020 between January 1st, 2015 and December 31st, 2020
-    :return:
-    '''
-    s2api = None
-    p_dict = dict(query=query)
-
-    if early_date and later_date is None:
-        p_dict['publicationDateOrYear'] = f'{early_date.strftime("%Y-%m-%d")}:'
-    elif later_date and early_date is None:
-        p_dict['publicationDateOrYear'] = f':{later_date.strftime("%Y-%m-%d")}'
-    elif later_date and early_date:
-        p_dict['publicationDateOrYear'] = f'{early_date.strftime("%Y-%m-%d")}:{later_date.strftime("%Y-%m-%d")}'
-    else:
-        pass
-        # if before_pub_date:
-        #
-        # else:
-        #
-    if continue_token:
-        p_dict['token'] = continue_token
-    if sort_rule:
-        p_dict['sort'] = sort_rule
-    params = urlencode(p_dict)
-    url = (f"{S2_QUERY_URL}?{params}&fields=url,title,abstract,authors,venue,externalIds,referenceCount,"
-           f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
-           f"s2FieldsOfStudy,publicationTypes,publicationDate")
-    # print(url)
-    with shelve.open(generate_cache_file_name(url)) as cache:
-
-        # if pub_date:
-        #     url = url+f'$publicationDateOrYear=:{pub_date.year}-{pub_date.month}-{pub_date.day}'
-        # if continue_token:
-        #     url = url+f'$token={continue_token}'
-        # print(url)
-        if url in cache:
-            reply = cache[url]
-            if reply.status_code == 504:
-                session = requests.Session()
-                if s2api is not None:
-                    headers = {
-                        'x-api-key': s2api
-                    }
-                else:
-                    headers = None
-                reply = session.get(url, headers=headers)
-                cache[url] = reply
-
-                reply = session.get(url)
-        else:
-            session = requests.Session()
-            if s2api is not None:
-                headers = {
-                    'x-api-key': s2api
-                }
-            else:
-                headers = None
-            reply = session.get(url, headers=headers)
-            cache[url] = reply
-
-            reply = session.get(url)
-        response = reply.json()
-
-        if "data" not in response:
-            msg = response.get("error") or response.get("message") or "unknown"
-            raise Exception(f"error while fetching {reply.url}: {msg}")
-
-        return response
 
 def get_Coverage(ref_obj, ref_type='entity', tncsi_rst=None, multiple_keywords=False):
     def cal_weighted_cocite_rate(ref_relevant_lst, pub_relevant_lst,tncsi_rst):
@@ -1112,14 +1099,14 @@ def get_median_pubdate(pub_time,refs):
     while index < len(sorted_list):
         try:
             sorted_list[index].timestamp()
-            index += 1
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error: {e}. The issue may be caused by the date being earlier than 1970.1.1.")
             del sorted_list[index]
+        index += 1
 
     timestamps = [d.timestamp() for d in sorted_list]
     if len(timestamps) == 0:
-        return float('-inf')
+        return -1
     median_timestamp = statistics.median(timestamps)
     median_value = datetime.fromtimestamp(median_timestamp)
 
@@ -1212,7 +1199,6 @@ def plot_time_vs_aFNCSI(sp: S2paper, loc, scale):
     plt.ylabel('aTNCSI')
     plt.savefig(f'{sp.title}.svg')
 
-
 def _get_RQM(ref_obj, ref_type='entity', tncsi_rst=None):
 
 
@@ -1253,7 +1239,7 @@ def _get_RQM(ref_obj, ref_type='entity', tncsi_rst=None):
     # print(f'search paper title:{s2paper.title}, which has {len(ref_r)} refs. Due to errors, only count {N_R} papers.')
     return overlap_ratio
 
-def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20):
+def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20,topic_keyword=None):
 
 
     if ref_type == 'title':
@@ -1264,38 +1250,32 @@ def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20):
         return None
 
     if not tncsi_rst:
-        tncsi_rst = get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,show_PDF=False)
+        tncsi_rst = get_TNCSI(ref_obj, ref_type='entity', topic_keyword=topic_keyword, save_img_pth=None,show_PDF=False)
 
     loc = tncsi_rst['loc']
     scale = tncsi_rst['scale']
 
 
     pub_dates = []
+    if len(s2paper.references) == 0:
+        rst = {}
+        rst['RQM'] = -1
+        rst['ARQ'] = -1
+        rst['S_mp'] = -1
+        rst['loc'] = loc
+        rst['scale'] = scale
+        return rst
     for i in s2paper.references:
         if i.publication_date:
             pub_dates.append(i.publication_date)
     # pub_dates = [i.publication_date for i in s2paper.references]
     sorted_dates = sorted(pub_dates, reverse=True)
-    # index = 0
-    # while index < len(sorted_list):
-    #     try:
-    #         sorted_list[index].timestamp()
-    #         index += 1
-    #     except Exception as e:
-    #         print(f"Error: {e}")
-    #         del sorted_list[index]
     # 计算前1/3处的索引位置
     date_index = len(sorted_dates) // 2
 
     # 取前1/3处的日期
     index_date = sorted_dates[date_index]
 
-    # timestamps = [d.timestamp() for d in sorted_list]
-    # if len(timestamps) == 0:
-    #     return float('-inf')
-    # median_timestamp = statistics.median(timestamps)
-    # median_value = datetime.datetime.fromtimestamp(median_timestamp)
-    # median_value = statistics.median(sorted_list)
     pub_time = s2paper.publication_date
     months_difference = (pub_time - index_date) // timedelta(days=30)
     S_mp = (months_difference // 6 ) + 1
@@ -1318,7 +1298,10 @@ def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20):
     rst['RQM'] = 1 - math.exp(-beta * math.exp(-(1-ARQ) * S_mp))
     rst['ARQ'] = ARQ
     rst['S_mp'] = S_mp
+    rst['loc'] = loc
+    rst['scale'] = scale
     return rst
+
 
 import numpy as np
 import scipy.stats as stats
@@ -1378,3 +1361,151 @@ def get_RUI(s2paper,p=10,q=10, M=None):
     rst['CDR'] = CDR
     rst['RUI'] = p*CDR + q*RAD
     return rst
+
+
+@retry()
+def request_query(query,  sort_rule=None,  continue_token=None, early_date: datetime = None, later_date:datetime = None
+                  ):# before_pub_date=True
+    '''
+
+    :param query:
+    :param offset:
+    :param limit:
+    :param CACHE_FILE:
+    :param sort: publicationDate:asc - return oldest papers first.
+                citationCount:desc - return most highly-cited papers first.
+                paperId - return papers in ID order, low-to-high.
+    :param pub_date:
+    2019-03-05 on March 3rd, 2019
+    2019-03 during March 2019
+    2019 during 2019
+    2016-03-05:2020-06-06 as early as March 5th, 2016 or as late as June 6th, 2020
+    1981-08-25: on or after August 25th, 1981
+    :2015-01 before or on January 31st, 2015
+    2015:2020 between January 1st, 2015 and December 31st, 2020
+    :return:
+    '''
+    s2api = None
+    p_dict = dict(query=query)
+
+    if early_date and later_date is None:
+        p_dict['publicationDateOrYear'] = f'{early_date.strftime("%Y-%m-%d")}:'
+    elif later_date and early_date is None:
+        p_dict['publicationDateOrYear'] = f':{later_date.strftime("%Y-%m-%d")}'
+    elif later_date and early_date:
+        p_dict['publicationDateOrYear'] = f'{early_date.strftime("%Y-%m-%d")}:{later_date.strftime("%Y-%m-%d")}'
+    else:
+        pass
+        # if before_pub_date:
+        #
+        # else:
+        #
+    if continue_token:
+        p_dict['token'] = continue_token
+    if sort_rule:
+        p_dict['sort'] = sort_rule
+    params = urlencode(p_dict)
+    url = (f"{S2_QUERY_URL}?{params}&fields=url,title,abstract,authors,venue,externalIds,referenceCount,"
+           f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
+           f"s2FieldsOfStudy,publicationTypes,publicationDate")
+    # print(url)
+    with shelve.open(generate_cache_file_name(url)) as cache:
+
+        # if pub_date:
+        #     url = url+f'$publicationDateOrYear=:{pub_date.year}-{pub_date.month}-{pub_date.day}'
+        # if continue_token:
+        #     url = url+f'$token={continue_token}'
+        # print(url)
+        if url in cache:
+            reply = cache[url]
+            if reply.status_code == 504:
+                session = requests.Session()
+                if s2api is not None:
+                    headers = {
+                        'x-api-key': s2api
+                    }
+                else:
+                    headers = None
+                reply = session.get(url, headers=headers)
+                cache[url] = reply
+
+                reply = session.get(url)
+        else:
+            session = requests.Session()
+            if s2api is not None:
+                headers = {
+                    'x-api-key': s2api
+                }
+            else:
+                headers = None
+            reply = session.get(url, headers=headers)
+            cache[url] = reply
+
+            reply = session.get(url)
+        response = reply.json()
+
+        if "data" not in response:
+            msg = response.get("error") or response.get("message") or "unknown"
+            raise Exception(f"error while fetching {reply.url}: {msg}")
+
+        return response
+
+# def request_query(query, sort_rule=None, pub_date: datetime = None, continue_token=None):
+#     '''
+#     :param query: keyword
+#     :param sort_rule: publicationDate:asc - return oldest papers first. || citationCount:desc - return most highly-cited papers first. ||paperId - return papers in ID order, low-to-high.
+#     :param pub_date:
+#     2019-03-05 on March 3rd, 2019
+#     2019-03 during March 2019
+#     2019 during 2019
+#     2016-03-05:2020-06-06 as early as March 5th, 2016 or as late as June 6th, 2020
+#     1981-08-25: on or after August 25th, 1981
+#     :2015-01 before or on January 31st, 2015
+#     2015:2020 between January 1st, 2015 and December 31st, 2020
+#     :return:
+#     '''
+#     s2api = None
+#     p_dict = dict(query=query)
+#     if pub_date:
+#         p_dict['publicationDateOrYear'] = f':{pub_date.year}-{pub_date.month}-{pub_date.day}'
+#     if continue_token:
+#         p_dict['token'] = continue_token
+#     if sort_rule:
+#         p_dict['sort'] = sort_rule
+#     params = urlencode(p_dict)
+#     url = (f"{S2_QUERY_URL}?{params}&fields=url,title,abstract,authors,venue,externalIds,referenceCount,"
+#            f"openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,"
+#            f"s2FieldsOfStudy,publicationTypes,publicationDate")
+#     # print(url)
+#     with shelve.open(generate_cache_file_name(url)) as cache:
+#
+#         # if pub_date:
+#         #     url = url+f'$publicationDateOrYear=:{pub_date.year}-{pub_date.month}-{pub_date.day}'
+#         # if continue_token:
+#         #     url = url+f'$token={continue_token}'
+#         # print(url)
+#         rt = False
+#         if url in cache:
+#             reply = cache[url]
+#             try:
+#                 response = reply.json()
+#             except:
+#                 rt = True
+#         if url not in cache or rt:
+#             session = requests.Session()
+#             if s2api is not None:
+#                 headers = {
+#                     'x-api-key': s2api
+#                 }
+#             else:
+#                 headers = None
+#             reply = session.get(url, headers=headers)
+#
+#             response = reply.json()
+#             cache[url] = reply
+#
+#         if "data" not in response:
+#             msg = response.get("error") or response.get("message") or "unknown"
+#             raise Exception(f"error while fetching {reply.url}: {msg}")
+#
+#         return response

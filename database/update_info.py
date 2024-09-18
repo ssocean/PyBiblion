@@ -20,8 +20,52 @@ from sqlalchemy.orm import sessionmaker
 from furnace.google_scholar_paper import Google_paper
 from furnace.semantic_scholar_paper import S2paper
 from tools.gpt_util import *
-from cfg.safesession import session
+from cfg.safesession import session, engine, session_factory
 
+
+def update_keyword(dir: str, session):
+    for filename in tqdm(os.listdir(dir)):
+        if os.path.isfile(os.path.join(dir, filename)):
+            pattern = r'\d+\.\d+(?:v\d+)?'
+            match = re.search(pattern, filename)
+
+            title_parts = filename.split('.')
+            if match:
+                arxiv_id = '.'.join(title_parts[:2])
+                id = 'http://arxiv.org/abs/' + arxiv_id
+
+                data = session.query(PaperMapping).filter(PaperMapping.id == id).first()
+                if data and data.gpt_keywords is None:
+                    time.sleep(random.uniform(5.5, 8))
+                    try:
+                        kwd = get_chatgpt_keyword(data.title, data.abstract.replace('\n', ''))
+                    except Exception as e:
+                        print(e)
+                        print(data.title)
+                        print(data.abstract)
+                        return
+                    data.gpt_keywords = ','.join(kwd)
+
+                    try:
+                        if data.citation_count is None:
+                            g_paper = Google_paper(data.title)
+
+                            if g_paper.citation_count >= 0:
+                                data.citation_count = g_paper.citation_count
+
+                            if g_paper.publication_source != 'NA':
+                                data.publication_source = g_paper.publication_source
+
+                    except KeyError as e:
+                        print(e)
+                        return
+
+                    session.commit()
+                else:
+                    pass
+            session.close()
+
+    session.close()
 def add_info_to_database(dir: str, session):
     '''
     从arxiv下载后论文的第一步
@@ -127,10 +171,76 @@ def get_keywords():
     return rst
 
 
+from concurrent.futures import ThreadPoolExecutor
+from sqlalchemy.orm import sessionmaker
+from tqdm import tqdm
+import time
+from datetime import datetime
+
+
+# def update_s2(session, mandatory_update=False):
+#     # Get list of IDs to process
+#     results = session.query(PaperMapping).all()
+#     ids_to_process = [
+#         row.id for row in results
+#         if (row.s2_id is None or mandatory_update) and row.is_review == 1
+#     ]
+#
+#     # Create a session factory bound to the same engine
+#     SessionFactory = sessionmaker(bind=session.get_bind())
+#
+#     # Define the worker function
+#     def process_row(row_id):
+#         thread_session = SessionFactory()
+#         try:
+#             row = thread_session.query(PaperMapping).get(row_id)
+#             if not row:
+#                 return  # Skip if row is not found
+#
+#             s2_paper = S2paper(row.title, filled_authors=False, force_return=True)
+#             if s2_paper.s2id is not None:
+#                 if s2_paper.title != row.title:
+#                     if s2_paper.authors and s2_paper.authors[0].name in row.authors:
+#                         print(
+#                             f'The same paper with different titles detected: {row.title} \n {s2_paper.title}'
+#                         )
+#                     else:
+#                         return  # Skip to next if titles don't match
+#
+#                 time.sleep(0.5)
+#                 # Update the row with data from s2_paper
+#                 row.s2_id = s2_paper.s2id
+#                 row.s2_publication_date = s2_paper.publication_date
+#                 row.s2_tldr = s2_paper.tldr
+#                 row.s2_DOI = s2_paper.DOI
+#                 row.s2_pub_info = s2_paper.publication_source
+#                 row.s2_pub_url = s2_paper.pub_url['url'][:255] if s2_paper.pub_url else None
+#                 row.s2_citation_count = s2_paper.citation_count
+#                 row.s2_reference_count = s2_paper.reference_count
+#                 row.s2_field = s2_paper.field
+#                 row.s2_influential_citation_count = s2_paper.influential_citation_count
+#                 row.valid = 1
+#                 row.last_update_time = datetime.now()
+#                 row.authors_num = len(s2_paper.authors) if s2_paper.authors else None
+#             else:
+#                 row.valid = 0
+#
+#             thread_session.commit()
+#         except Exception as e:
+#             thread_session.rollback()
+#             print(f"Error processing row {row_id}: {e}")
+#         finally:
+#             thread_session.close()
+#
+#     # Use ThreadPoolExecutor for parallel processing
+#     with ThreadPoolExecutor(max_workers=4) as executor:
+#         list(tqdm(executor.map(process_row, ids_to_process), total=len(ids_to_process)))
+#
+#     session.close()
 def update_s2(session, mandatory_update=False):
-    results = session.query(PaperMapping).all()
+    results = session.query(PaperMapping).filter(PaperMapping.s2_citation_count.is_(None)).all()
     for row in tqdm(results):
-        if (row.s2_id is None or mandatory_update) and (row.valid==1 and row.is_review==1):
+        if (row.s2_id is None or mandatory_update) and row.is_review==1:
             # if row.authors_num is not None:
             #     continue
             s2_paper = S2paper(row.title, filled_authors=False, force_return=True)
@@ -298,36 +408,55 @@ def insert_idLiterature_into_CoP(session):
                 # continue
 
 
+import concurrent.futures
+from tqdm import tqdm
 
-def gpt_process(session):
+
+def process_paper(row_id, session_factory):
+    """Function to process each paper and check if it is a review"""
+    # 使用 session_factory 创建一个独立的 session
+    session = session_factory()
+
+    # 查询单个 row 的数据
+    row = session.query(PaperMapping).filter(PaperMapping.id == row_id).first()
+
+    if row.is_review is None:
+        status = check_PAMIreview(row.title, row.abstract)
+        row.is_review = 1 if status else 0
+        session.commit()
+
+    result = f'{row.title}||{row.is_review}||{row.gpt_keywords}'
+
+    session.close()  # 关闭 session
+    return result
+
+
+def check_is_review(session, session_factory):
+    # 获取所有需要处理的论文记录
     results = session.query(PaperMapping).all()
-    for row in tqdm(results):
-        # print(row.title)
-        # if row.gpt_keywords is None:
-        #     keywords = get_chatgpt_keyword(row.title, row.abstract)
-        #
-        #     keywords = [keyword.replace('.', '').replace("'", "").replace('"', "") for keyword in keywords]
-        #
-        #     keywords = keywords[:5]
-        #     # row.gpt_keywords = ','.join(keywords)
-        #     row.gpt_keywords = ','.join(keywords)
-        #
-        #     session.commit()
-        # else:
-        #     row.gpt_keywords = row.gpt_keywords.replace('.', '').replace("'", "").replace('"', "")
-        #     session.commit()
-        if row.is_review is None:
-            status = check_PAMIreview(row.title, row.abstract)
-            if not status:
-                row.is_review = 0
-            if status:
-                row.is_review = 1
-            session.commit()
-        print(f'{row.title}||{row.is_review}||{row.gpt_keywords}')
+
+    # 提取所有 row 的 id，避免在主线程中共享 session
+    row_ids = [row.id for row in results]
+
+    # 使用 ThreadPoolExecutor 并行处理
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = []
+
+        # 提交任务到线程池
+        for row_id in tqdm(row_ids):
+            future = executor.submit(process_paper, row_id, session_factory)
+            futures.append(future)
+
+        # 打印每个完成的任务结果
+        for future in concurrent.futures.as_completed(futures):
+            print(future.result())
+
+    # 关闭主线程中的 session
     session.close()
 
 
-gpt_process(session)
+# 运行函数
+
 # update_s2_ref(session)
 
 
@@ -336,16 +465,16 @@ def sync_folder_to_database(session, dir=None):
     # add_info_to_database(dir, session)
     
     # Step 2: Generate keywords and determine if it's a PAMI review.
-    # gpt_process(session)
+    # check_is_review(session, session_factory)
 
     # Step 3: Query for Semantic Scholar (S2) information.
     print('Querying S2 information')
-    # update_s2(session, True)
+    update_s2(session, True)
     
     # Step 4: Update citation and reference information.
-    print('Updating citation and reference information')
+    # print('Updating citation and reference information')
     # update_s2_ref(session)
-    update_s2_citation(session)
+    # update_s2_citation(session)
 
     # Step 5 (optional): Update author information.
     # update_author(session)
@@ -411,7 +540,10 @@ def update_official_keywords(dir: str, session):
 
 
     session.close()
-
+def update_metric(session):
+    results = session.query(PaperMapping).filter(PaperMapping.is_review == 1).all()
+    for row in tqdm(results):
+        pass
 def update_gpt_keyword(session):
     results = session.query(PaperMapping).all()
     for row in tqdm(results):
@@ -428,10 +560,48 @@ def update_gpt_keyword(session):
 
     session.close()
 
+@retry()
+def ensemble_meta_info(session):
+
+    # results = session.query(PaperMapping).filter(PaperMapping.TNCSI == None and PaperMapping.gpt_keyword == None)#.all()#
+    results = session.query(PaperMapping).filter(and_(PaperMapping.valid ==1, PaperMapping.is_review ==1, PaperMapping.TNCSI.is_(None), PaperMapping.CDR.is_(None))).all()
+    for result in tqdm(tqdm(results)):
+        s2paper = S2paper(result.title, filled_authors=False)
+        if s2paper.citation_count is not None:  # S2bug
+            try:
+                result.gpt_keyword = s2paper.gpt_keyword
+                result.TNCSI = s2paper.TNCSI['TNCSI']
+                result.TNCSI_loc = s2paper.TNCSI['loc']
+                result.TNCSI_scale = s2paper.TNCSI['scale']
+                print(f"TNCSI: {result.TNCSI}", end=' | ')
+
+                result.RQM = s2paper.RQM['RQM']
+                result.ARQ = s2paper.RQM['ARQ']
+                result.SMP = s2paper.RQM['S_mp']
+                print(f"RQM: {result.RQM}", end=' | ')
+
+                result.IEI = s2paper.IEI['L6']  if s2paper.IEI['L6']  != float('-inf') else None
+                result.IEI_I6 = s2paper.IEI['I6']  if s2paper.IEI['I6']  != float('-inf') else None
+                print(f"IEI: {result.IEI}", end=' | ')
+
+                result.RUI = s2paper.RUI['RUI']
+                result.RAD = s2paper.RUI['RAD']
+                result.CDR = s2paper.RUI['CDR']
+                print(f"RUI: {result.RUI}", end=' | ')
+
+                session.commit()
+                print("\nSuccessfully processed the paper.")
+            except Exception as e:
+                result.valid = -1
+                session.commit()
+        else:
+            result.valid = 0
+            session.commit()
 if __name__ == "__main__":
     pass
+    ensemble_meta_info(session)
     # update_gpt_keyword(session)
-    # sync_folder_to_database(session,dir=r'E:\download_paper')
+    # sync_folder_to_database(session,dir=r'J:\SLR')
     # update_official_keywords(r'E:/download_paper', session)
     # insert_idLiterature_into_CoP(session)
     # update_s2_citation(session)
