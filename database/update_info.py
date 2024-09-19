@@ -559,24 +559,30 @@ def update_gpt_keyword(session):
             session.commit()
 
     session.close()
+def limit_precision(value, threshold=1e-8):
+    value = float(value)
+    return 0.0 if abs(value) < threshold else value
+
 
 @retry()
 def ensemble_meta_info(session):
 
     # results = session.query(PaperMapping).filter(PaperMapping.TNCSI == None and PaperMapping.gpt_keyword == None)#.all()#
-    results = session.query(PaperMapping).filter(and_(PaperMapping.valid ==1, PaperMapping.is_review ==1, PaperMapping.TNCSI.is_(None), PaperMapping.CDR.is_(None))).all()
+    results = session.query(PaperMapping).filter(and_(PaperMapping.valid ==1, PaperMapping.is_review ==1, PaperMapping.CDR.is_(None))).all()
     for result in tqdm(tqdm(results)):
         s2paper = S2paper(result.title, filled_authors=False)
         if s2paper.citation_count is not None:  # S2bug
             try:
                 result.gpt_keyword = s2paper.gpt_keyword
-                result.TNCSI = s2paper.TNCSI['TNCSI']
+
+                result.TNCSI = limit_precision(f"{s2paper.TNCSI['TNCSI']:.4e}")
                 result.TNCSI_loc = s2paper.TNCSI['loc']
                 result.TNCSI_scale = s2paper.TNCSI['scale']
                 print(f"TNCSI: {result.TNCSI}", end=' | ')
 
-                result.RQM = s2paper.RQM['RQM']
-                result.ARQ = s2paper.RQM['ARQ']
+                result.RQM = float(f"{s2paper.RQM['RQM']:.4e}")
+                result.ARQ = limit_precision(f"{s2paper.RQM['ARQ']:.4e}")
+                # result.ARQ = float(f"{s2paper.RQM['ARQ']:.4e}")
                 result.SMP = s2paper.RQM['S_mp']
                 print(f"RQM: {result.RQM}", end=' | ')
 
@@ -584,9 +590,9 @@ def ensemble_meta_info(session):
                 result.IEI_I6 = s2paper.IEI['I6']  if s2paper.IEI['I6']  != float('-inf') else None
                 print(f"IEI: {result.IEI}", end=' | ')
 
-                result.RUI = s2paper.RUI['RUI']
-                result.RAD = s2paper.RUI['RAD']
-                result.CDR = s2paper.RUI['CDR']
+                result.RUI = limit_precision(f"{s2paper.RUI['RUI']:.4e}") if s2paper.RUI['RUI'] != float('-inf') else None
+                result.RAD = limit_precision(f"{s2paper.RUI['RAD']:.4e}") if s2paper.RUI['RAD'] != float('-inf') else None
+                result.CDR = limit_precision(f"{s2paper.RUI['CDR']:.4e}") if s2paper.RUI['CDR'] != float('-inf') else None
                 print(f"RUI: {result.RUI}", end=' | ')
 
                 session.commit()

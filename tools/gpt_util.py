@@ -1,4 +1,6 @@
 import os
+
+import tiktoken
 from retry import retry
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI
@@ -211,3 +213,50 @@ def get_chatgpt_fields(title, abstract, extra_prompt=True,sys_content=None,usr_p
 
 
     return chat.batch([messages])[0].content
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+def markdown_analysis(pth, default_model="moonshot-v1-32k", temperature=0):
+
+    loader = UnstructuredMarkdownLoader(pth)
+    def num_tokens_from_string(string: str) -> int:
+        """Returns the number of tokens in a text string."""
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        num_tokens = len(encoding.encode(string))
+        return num_tokens
+
+    data = loader.load()
+    raw_content = ''.join([d.page_content for d in data])
+    # 使用 CharacterTextSplitter 分割文本
+
+
+
+    prompt_template = """
+    [Step 1 of 5] Read the paper and identify the authors and the corresponding affiliation of each author. 
+
+    [Step 2 of 5] Find all the figure captions in the paper, you may pay attention to text like "Fig. X" or "Figure. X".
+
+    [Step 3 of 5] Find all the table captions in the paper, you may pay attention to text like "Tab. X" or "Table. X".
+
+    [Step 4 of 5] I need a concise summary of the core method proposed in this paper. Could you distill the provided paper into a single, clear sentence?
+
+    [Step 5 of 5] Now, check if the authors have mentioned sharing their code, dataset, or something related on the website? Pay attnetion to sentences like 'Code is released at xxx', 'Project page is xxx', etc. If so, please list these links. 
+
+    \nProvided paper: {context}\n
+    Format Instructions:\n{format_instructions}
+     """
+    PROMPT = PromptTemplate(
+        template=prompt_template, input_variables=["context"],
+        partial_variables={"format_instructions": lpqa_parser.get_format_instructions()},
+    )
+    chain = LLMChain(llm=ChatOpenAI(model_name=default_model, temperature=temperature, max_tokens=4096), prompt=PROMPT)
+
+    rst = chain.run(context=raw_content)
+
+    try:
+        p_rst = lpqa_parser.parse(rst)
+    except OutputParserException as e:
+        print(f'raw output {rst}')
+        arxiv_logger.warning(f'Response parse error in longtext_paper_qa.')
+        fix_parser = OutputFixingParser.from_llm(parser=parser_fix, llm=ChatOpenAI(model_name='gpt-4o', temperature=0))
+        p_rst = fix_parser.parse(rst)
+        print(f'fixed output {p_rst}')
+    return p_rst

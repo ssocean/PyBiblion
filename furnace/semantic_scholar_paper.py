@@ -855,6 +855,7 @@ def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,
         s2paper = ref_obj
     else:
         return None
+
     if s2paper.citation_count is None:
         rst = {}
         rst['TNCSI'] = -1
@@ -1257,7 +1258,7 @@ def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20,topic_keyword=Non
 
 
     pub_dates = []
-    if len(s2paper.references) == 0:
+    if len(s2paper.references) == 0 or (loc<0 or scale<0):
         rst = {}
         rst['RQM'] = -1
         rst['ARQ'] = -1
@@ -1348,19 +1349,24 @@ def get_RUI(s2paper,p=10,q=10, M=None):
     RAD = get_RAD(t)
     PC = request_query(s2paper.gpt_keyword,early_date=s2paper.publication_date)
     M = datetime.now() if not M else M
-    MP = request_query(s2paper.gpt_keyword,early_date=get_median_pubdate(M,s2paper.references),later_date=s2paper.publication_date)
-    rst = {}
-    rst['RAD'] = RAD
+    if s2paper.publication_date > get_median_pubdate(M,s2paper.references):
+        MP = request_query(s2paper.gpt_keyword,early_date=get_median_pubdate(M,s2paper.references),later_date=s2paper.publication_date)
+        rst = {}
+        rst['RAD'] = RAD
 
-    N_pc= PC['total']
-    N_mp = MP['total']
-    if N_mp == 0:
-        return {'RAD':RAD, 'CDR':float('-inf'),'RUI':float('-inf')}
+        N_pc= PC['total']
+        N_mp = MP['total']
+        if N_mp == 0:
+            return {'RAD': RAD, 'CDR': float('-inf'), 'RUI': float('-inf')}
 
-    CDR = N_pc/N_mp
-    rst['CDR'] = CDR
-    rst['RUI'] = p*CDR + q*RAD
-    return rst
+        CDR = N_pc / N_mp
+        rst['CDR'] = CDR
+        rst['RUI'] = p * CDR + q * RAD
+        return rst
+    else:
+        return {'RAD': RAD, 'CDR': float('-inf'), 'RUI': float('-inf')}
+
+
 
 
 @retry()
