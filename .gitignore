@@ -12,3 +12,4 @@ cfg/safesession.py
 /tools/__pycache__
 /local_test
 /local_deprecated
+/local_visualization
