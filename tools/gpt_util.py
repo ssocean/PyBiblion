@@ -1,10 +1,38 @@
+import json
 import os
 
 import tiktoken
+from langchain_core.prompts import ChatPromptTemplate
 from retry import retry
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+
+from langchain_community.document_loaders import UnstructuredMarkdownLoader, PDFMinerLoader
+import requests_cache
+import tiktoken
+from langchain_core.exceptions import OutputParserException
+
+from tools.pdf_util import get_structure_md, get_toc_from_md, extract_title_and_abstract
+
+# 配置 requests_cache，使用 SQLite 后端
+requests_cache.install_cache('requests_cache')
+
+from langchain.agents import AgentExecutor
+from langchain.agents.format_scratchpad import format_to_openai_function_messages
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
-from langchain_community.chat_models.openai import ChatOpenAI
+
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser
+from pydantic import BaseModel, Field
+from typing import List
+from typing import Dict
+
+import langchain
+from langchain.chains import LLMChain
+from langchain_core.output_parsers import CommaSeparatedListOutputParser
+# import langchain.chains.retrieval_qa.base
+from langchain.prompts import PromptTemplate
+
+from langchain.text_splitter import CharacterTextSplitter
 from cfg.config import *
 def _get_ref_list(text):
     messages = [
@@ -44,7 +72,7 @@ def get_chatgpt_keyword(title, abstract):
 
 
 
-from langchain.chat_models import ChatOpenAI
+
 from langchain.schema import SystemMessage, HumanMessage
 @retry(delay=6,)
 def check_PAMIreview(title, abstract):
@@ -93,6 +121,7 @@ def get_unnum_sectitle(sectitle):
     return chat.batch([messages])[0].content
 
 def get_chatgpt_field(title, abstract=None, sys_content=None, usr_prompt=None, extra_prompt=True):
+
     if not sys_content:
         sys_content = (
             "You are a profound researcher who is good at identifying the topic keyword from paper's title and "
@@ -213,50 +242,459 @@ def get_chatgpt_fields(title, abstract, extra_prompt=True,sys_content=None,usr_p
 
 
     return chat.batch([messages])[0].content
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
-def markdown_analysis(pth, default_model="moonshot-v1-32k", temperature=0):
 
-    loader = UnstructuredMarkdownLoader(pth)
-    def num_tokens_from_string(string: str) -> int:
-        """Returns the number of tokens in a text string."""
-        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-        num_tokens = len(encoding.encode(string))
-        return num_tokens
+from pydantic import BaseModel, Field
+from typing import List, Tuple
+from typing import Dict
 
-    data = loader.load()
-    raw_content = ''.join([d.page_content for d in data])
-    # 使用 CharacterTextSplitter 分割文本
+import langchain
 
+from langchain.output_parsers.enum import EnumOutputParser
 
+from enum import Enum
 
-    prompt_template = """
-    [Step 1 of 5] Read the paper and identify the authors and the corresponding affiliation of each author. 
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+class ReviewTypes(Enum):
+    MAPPING_REVIEW = "Mapping Review"
+    META_ANALYSIS = "Meta-Analysis"
+    CRITICAL_REVIEW = "Critical Review"
+    SCOPING_REVIEW = "Scoping Review"
+    SOTA_REVIEW = "SOTA Review"
+    SYSTEMATIC_REVIEW = "Systematic Review"
+    UMBRELLA_REVIEW = "Umbrella Review"
+    NARRATIVE_REVIEW = "Narrative Review"
+lt_parser = EnumOutputParser(enum=ReviewTypes)
+from langchain_text_splitters import CharacterTextSplitter
 
-    [Step 2 of 5] Find all the figure captions in the paper, you may pay attention to text like "Fig. X" or "Figure. X".
+from pydantic import BaseModel, Field
 
-    [Step 3 of 5] Find all the table captions in the paper, you may pay attention to text like "Tab. X" or "Table. X".
-
-    [Step 4 of 5] I need a concise summary of the core method proposed in this paper. Could you distill the provided paper into a single, clear sentence?
-
-    [Step 5 of 5] Now, check if the authors have mentioned sharing their code, dataset, or something related on the website? Pay attnetion to sentences like 'Code is released at xxx', 'Project page is xxx', etc. If so, please list these links. 
-
-    \nProvided paper: {context}\n
-    Format Instructions:\n{format_instructions}
-     """
-    PROMPT = PromptTemplate(
-        template=prompt_template, input_variables=["context"],
-        partial_variables={"format_instructions": lpqa_parser.get_format_instructions()},
+class ReviewFeatureParser(BaseModel):
+    PROPOSE_TAXONOMY: bool = Field(
+        default=False,
+        description="True if the author has introduced a new taxonomy or classification system as a key contribution, false otherwise."
     )
-    chain = LLMChain(llm=ChatOpenAI(model_name=default_model, temperature=temperature, max_tokens=4096), prompt=PROMPT)
+    INCLUDE_EXCLUSION_CRITERIA: bool = Field(
+        default=False,
+        description="True if the article includes a clear section detailing the literature's inclusion and exclusion criteria, similar to PRISMA standards, false otherwise."
+    )
+    INCLUDE_PRELIMINARY: bool = Field(
+        default=False,
+        description="True if there is a separate chapter or section explaining foundational research and background information, not including the introduction, false otherwise."
+    )
+    INCLUDE_BENCHMARK: bool = Field(
+        default=False,
+        description="True if the review benchmarks the methods using specific metrics and includes quantitative performance comparisons, false otherwise."
+    )
+    INCLUDE_APPLICATION: bool = Field(
+        default=False,
+        description="True if there is a dedicated section on the applications of the techniques in real-world tasks or industrial settings, false otherwise."
+    )
+    INCLUDE_FUTURE: bool = Field(
+        default=False,
+        description="True if there is a distinct section discussing the future developments and current limitations of the field or methods, not just mentioned in the conclusion, false otherwise."
+    )
+class ReviewFeatureParser_FS1(BaseModel):#full sub 1
+    CLS_METHODS: bool = Field(
+        default=False,
+        description="True if the author has introduced a new taxonomy or classification system as a key contribution, false otherwise."
+    )
+    SELECTION_CRITERIA: bool = Field(
+        default=False,
+        description="True if the article includes a clear section detailing the literature's inclusion and exclusion criteria, similar to PRISMA standards, false otherwise."
+    )
 
-    rst = chain.run(context=raw_content)
 
+class ReviewFeatureParser_FS2(BaseModel):
+    BACKGROUND: bool = Field(
+        default=False,
+        description="True if there is a separate chapter or section explaining basic knowledge and background information, false otherwise."
+    )
+    DISSCUSSION: bool = Field(
+        default=False,
+        description="True if there is a distinct section discussing the future developments or current limitations of the field or methods, not just mentioned in the conclusion, false otherwise."
+    )
+
+    APPLICATION: bool = Field(
+        default=False,
+        description="True if there is a dedicated section on the applications of the techniques, false otherwise."#"True if there is a separate chapter or section explaining foundational research and background information, not including the introduction, false otherwise."
+    )
+    # INCLUDE_BENCHMARK: bool = Field(
+    #     default=False,
+    #     description="True if the review benchmarks the methods using specific metrics and includes quantitative performance comparisons, false otherwise."
+    # )
+class ReviewFeature():
+    PROPOSE_TAXONOMY: bool = Field(
+        description="Indicates whether the article introduces a novel taxonomy or typology for existing literature."
+    )
+    INCLUDE_EXCLUSION_CRITERIA: bool = Field(
+        description="Indicates whether the article clearly outlines inclusion and exclusion criteria for the literature."
+    )
+    INCLUDE_PRELIMINARY: bool = Field(
+        description="Indicates whether there is a section explaining preliminaries or background knowledge."
+    )
+    INCLUDE_BENCHMARK: bool = Field(
+        description="Indicates whether the article includes a benchmark for existing methods."
+    )
+    INCLUDE_APPLICATION: bool = Field(
+        description="Indicates whether there is a section exploring applications related to the field."
+    )
+    INCLUDE_FUTURE: bool = Field(
+        description="Indicates whether there is a section discussing potential future developments in the field."
+    )
+class BenchRespParser(BaseModel):
+    BENCHMARK: bool = Field(
+        default=False,
+        description="True if the review benchmarks the methods using specific metrics and includes quantitative performance comparisons, false otherwise."
+    )
+
+
+rfp = PydanticOutputParser(pydantic_object= ReviewFeatureParser)
+
+rfp_full_sub_1 = PydanticOutputParser(pydantic_object= ReviewFeatureParser_FS1)
+rfp_full_sub_2 = PydanticOutputParser(pydantic_object= ReviewFeatureParser_FS2)
+brp = PydanticOutputParser(pydantic_object= BenchRespParser)
+def get_content_by_section_id(target_id:int,dict_lst)->str:
+    'Useful when you need to refer to the text of a certain chapter with specific ID.'
+    for item in dict_lst:
+        if item['ID'] == target_id:
+            return f'{item.get("content")}'
+def get_review_feature_full(pth, default_model="gpt-4o-mini", temperature=0):
+    with open(pth, 'r', encoding='utf-8') as md_file:
+        markdown_text = md_file.read()
+        content_dict_list = get_structure_md(pth)
+        toc = get_toc_from_md(content_dict_list, remove_abs_ref=False)
+        fig_tab = ' || '.join(naive_figtab_retriver(markdown_text))
+        intro = get_content_by_section_id(2,content_dict_list)
+        title, abs = extract_title_and_abstract(pth)
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=200000, chunk_overlap=0)
+        markdown_text = text_splitter.split_text(markdown_text)[0]
+        instructions = rfp.get_format_instructions()
+        prompt_template = """
+        Please carefully review the provided literature survey and answer the following questions:
+
+        1. **Taxonomy:** Examine whether the author proposes a novel taxonomy, classification, category, or typology for the surveyed domain. Focus on checking the abstract, introduction, and early sections to see if the author introduces new classification schemes or simply adopts existing ones. Pay attention to terms like 'taxonomy', 'classification', 'category', or 'typology'. 
+        
+        2. **Inclusion and Exclusion Criteria:** Identify if there is a clearly defined section that outlines the criteria for selecting or excluding literature, similar to standards like PRISMA. Review the table of contents and introduction for explicit mentions of 'Inclusion/Exclusion Criteria', 'Search Strategy', or related terms.
+        
+        3. **Preliminary Research:** Determine if the review includes a dedicated section for explaining preliminary research, task formulation, paradigms, definitions, or background information crucial for understanding the domain. These sections should be clearly separated from the introduction and may be labeled as 'Preliminaries', 'Task Formulation', 'Background', or similar headings.
+        
+        4. **Benchmark:** Check if the author has performed benchmarking on the reviewed methods using specific metrics, providing quantitative performance comparisons between different techniques. Look for performance tables or sections that discuss metric-based comparisons of the methods.
+        
+        5. **Applications:** Verify whether there is a distinct section focused on practical applications of the reviewed techniques in real-world tasks or industrial settings. This section should be clearly labeled, often appearing under headings such as 'Applications'.
+        
+        6. **Future Developments and Limitations:** Investigate whether the paper contains a dedicated chapter or section discussing future trends, emerging developments, and current limitations of the field. This discussion should be more extensive than a brief mention in the conclusion and provide detailed insights into the potential evolution of the domain.
+
+        **Survey Content**: {content}
+
+        **Format Instructions:** {instructions}
+        """
+
+        prompt = ChatPromptTemplate.from_template(prompt_template)
+
+
+        model = ChatOpenAI(model_name=default_model,temperature=temperature)
+
+        chain = prompt | model | rfp
+        # print(instructions)
+        rst = chain.invoke({"abs": abs,"title": title,"toc": toc, "content":markdown_text, "intro":intro,"fig_tab":fig_tab,"instructions": instructions})
+        return rst
+
+def get_taxonomy_criteria(pth, default_model="gpt-4o-mini", temperature=0):
+    with open(pth, 'r', encoding='utf-8') as md_file:
+        markdown_text = md_file.read()
+        content_dict_list = get_structure_md(pth)
+        toc = get_toc_from_md(content_dict_list, remove_abs_ref=False)
+
+        intro = None
+        for item in content_dict_list:
+            if (item['ID'] == 0 or item['ID'] == 1 or item['ID'] == 2 or item['ID'] == 3 ) and 'intro' in item.get('title').lower():
+                intro = f'{item.get("content")}'
+                break
+        if intro is None:
+            text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=4000, chunk_overlap=0)
+            intro = text_splitter.split_text(markdown_text)[0]
+            print('ERROR. USE first 4k token instead')
+        # intro = get_content_by_section_id(2, content_dict_list)
+        title, abs = extract_title_and_abstract(pth)
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=200000, chunk_overlap=0)
+
+        instructions = rfp_full_sub_1.get_format_instructions()
+        prompt_template = """
+        Please carefully review the provided literature survey and answer the following questions:
+
+        1. **Classify Existing Methods:** Check if the authors explicitly state in the abstract or introduction that proposing a new classification of methods is their contribution. Look for phrases like "propose a taxonomy" "categorize/classify methods into". A simple classification is not enough; the authors must clearly state that the classification itself is a key contribution of their work.
+
+        2. **Literature Selection Criteria:** What criteria were used to select the literature in this survey? Identify if there is a specific section that describes the inclusion and exclusion criteria for the literature, similar to PRISMA standards.  Look for phrases like "inclusion criteria," "exclusion criteria," "selection process," "literature filtering," "eligibility criteria," "search strategy," or "screening process."
+
+        **Title**: {title}
+        **Abstract**: {abs}
+        **Introduction**: {intro}
+        **Table of Content**: {toc}
+
+        **Format Instructions:** {instructions}
+        """
+
+        prompt = ChatPromptTemplate.from_template(prompt_template)
+
+        model = ChatOpenAI(model_name=default_model, temperature=temperature)
+
+        chain = prompt | model | rfp_full_sub_1
+        # print(instructions)
+        rst = chain.invoke(
+            {"abs": abs, "title": title, "toc": toc, "intro": intro,
+             "instructions": instructions})
+        return rst
+
+def get_background_future_app(pth, default_model="gpt-4o-mini", temperature=0):
+    with open(pth, 'r', encoding='utf-8') as md_file:
+        markdown_text = md_file.read()
+        content_dict_list = get_structure_md(pth)
+        toc = get_toc_from_md(content_dict_list, remove_abs_ref=False)
+        title, abs = extract_title_and_abstract(pth)
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=200000, chunk_overlap=0)
+        instructions = rfp_full_sub_2.get_format_instructions()
+        prompt_template = """
+        Please carefully review the provided literature survey and answer the following questions:
+
+        1. **Background Knowledge:** Check the Table of Contents to see if there is a section with any of the following keywords in the title: Preliminary, Background, Formulation, Paradigms, Definition, or Basic. This section should appear right after the introduction and is likely intended to provide background knowledge for readers.
+
+        2. **Future, Challenge, Limitation Discussion:** Discuss the future directions, challenges, and limitations outlined by the authors. Verify if there is a separate section that addresses these aspects, using keywords like "future," "challenge," "limitation," or "discussion." Ensure this discussion goes beyond the Conclusion section.
+        
+        3. **Application:** Discuss potential applications or contexts for the methods reviewed. Verify if there is a dedicated section containing "Application" in the section title.
+        
+        **Table of Content**: {toc}
+        
+        **Format Instructions:** {instructions}
+        """
+
+        prompt = ChatPromptTemplate.from_template(prompt_template)
+
+        model = ChatOpenAI(model_name=default_model, temperature=temperature)
+
+        chain = prompt | model | rfp_full_sub_2
+        # print(instructions)
+        rst = chain.invoke(
+            {"abs": abs, "title": title, "toc": toc,"instructions": instructions})
+        return rst
+
+
+def get_benchmark(pth, default_model="gpt-4o-mini", temperature=0):
+    with open(pth, 'r', encoding='utf-8') as md_file:
+        fig_tab_resp = fig_tab_extractor(pth)
+        figs = fig_tab_resp.FIGURE_CAPTION
+        tabs = fig_tab_resp.TABLE_CAPTION
+        instructions = brp.get_format_instructions()
+        prompt_template = """
+        Please carefully review the provided literature survey and answer the following questions:
+
+        **Benchmark:** Ensure that the author has conducted benchmarking on the reviewed methods using quantifiable performance metrics. This requires precise numerical comparisons between different techniques. Pay attention to whether the metrics referenced in the table titles suggest quantitative performance data (e.g., accuracy, latency, precision, recall, or throughput). Simple comparisons without numerical values do not qualify as benchmarks.
+
+        **Figure Caption**: {figs}
+        **Table Caption**: {tabs}
+
+        **Format Instructions:** {instructions}
+        """
+
+        prompt = ChatPromptTemplate.from_template(prompt_template)
+
+        model = ChatOpenAI(model_name=default_model, temperature=temperature)
+
+        chain = prompt | model | brp
+        # print(instructions)
+        rst = chain.invoke(
+            {"figs":figs,'tabs':tabs, "instructions": instructions})
+        return rst
+
+
+def get_review_feature_full_sub1(pth, default_model="gpt-4o-mini", temperature=0):
+    with open(pth, 'r', encoding='utf-8') as md_file:
+        markdown_text = md_file.read()
+        content_dict_list = get_structure_md(pth)
+        toc = get_toc_from_md(content_dict_list, remove_abs_ref=False)
+        fig_tab = ' || '.join(naive_figtab_retriver(markdown_text))
+        intro = get_content_by_section_id(2, content_dict_list)
+        title, abs = extract_title_and_abstract(pth)
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=200000, chunk_overlap=0)
+        markdown_text = text_splitter.split_text(markdown_text)[0]
+        instructions = rfp_full_sub_1.get_format_instructions()
+        prompt_template = """
+        Please carefully review the provided literature survey and answer the following questions:
+
+        1. **Taxonomy:** Investigate whether the author has divided the existing methods into specific categories. Determine if this classification is a novel taxonomy proposed by the author or if it merely uses an existing classification scheme. Pay attention to terms like 'taxonomy', 'category', 'classification', and ensure the author explicitly states that the introduction of the classification is a contribution.
+
+        2. **Inclusion and Exclusion Criteria:** Identify if there is a clearly defined section that outlines the criteria for selecting or excluding literature, similar to standards like PRISMA. Review the table of contents and introduction for explicit mentions of 'Inclusion/Exclusion Criteria', 'Search Strategy', or related terms.
+
+        3. **Preliminary Research:** Determine if the review includes a dedicated section for explaining preliminary research, task formulation, paradigms, definitions, or background information crucial for understanding the domain. These sections should be clearly separated from the introduction and may be labeled as 'Preliminaries', 'Task Formulation', 'Background', or similar headings.
+
+        **Survey Content**: {content}
+
+        **Format Instructions:** {instructions}
+        """
+
+        prompt = ChatPromptTemplate.from_template(prompt_template)
+
+        model = ChatOpenAI(model_name=default_model, temperature=temperature)
+
+        chain = prompt | model | rfp_full_sub_1
+        # print(instructions)
+        rst = chain.invoke(
+            {"abs": abs, "title": title, "toc": toc,  "intro": intro,
+             "instructions": instructions})
+        return rst
+
+
+def get_review_feature_full_sub2(pth, default_model="gpt-4o-mini", temperature=0):
+    with open(pth, 'r', encoding='utf-8') as md_file:
+        markdown_text = md_file.read()
+        content_dict_list = get_structure_md(pth)
+        toc = get_toc_from_md(content_dict_list, remove_abs_ref=False)
+        fig_tab = ' || '.join(naive_figtab_retriver(markdown_text))
+        intro = get_content_by_section_id(2, content_dict_list)
+        title, abs = extract_title_and_abstract(pth)
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=200000, chunk_overlap=0)
+        markdown_text = text_splitter.split_text(markdown_text)[0]
+        instructions = rfp_full_sub_2.get_format_instructions()
+        prompt_template = """
+        Please carefully review the provided literature survey and answer the following questions:
+        
+        1. **Benchmark:** Check if the author has performed benchmarking on the reviewed methods using specific metrics, providing quantitative performance comparisons between different techniques. Look for performance tables or sections that discuss metric-based comparisons of the methods.
+
+        2. **Applications:** Verify if there is a distinct section or chapter specifically discussing the application of the reviewed techniques in real-world tasks or industrial settings. This section should be clearly marked, typically with titles like 'Applications' or similar. Focus on the section titles to ensure there is a dedicated part addressing how these methods are applied in practice.
+
+        3. **Future Developments and Limitations:** Investigate whether the paper contains a dedicated chapter or section discussing future trends, emerging developments, and current limitations of the field. This discussion should be more extensive than a brief mention in the conclusion and provide detailed insights into the potential evolution of the domain.
+
+        **Survey Content**: {content}
+
+        **Format Instructions:** {instructions}
+        """
+
+        prompt = ChatPromptTemplate.from_template(prompt_template)
+
+        model = ChatOpenAI(model_name=default_model, temperature=temperature)
+
+        chain = prompt | model | rfp_full_sub_2
+        # print(instructions)
+        rst = chain.invoke(
+            {"abs": abs, "title": title, "toc": toc, "content": markdown_text, "intro": intro, "fig_tab": fig_tab,
+             "instructions": instructions})
+        return rst
+
+
+
+
+# get_review_feature_sub3_agent(r'J:\md\output\1005.4270v1.Clustering_Time_Series_Data_Stream___A_Literature_Survey.mmd')
+def naive_figtab_retriver(markdown_text):
     try:
-        p_rst = lpqa_parser.parse(rst)
-    except OutputParserException as e:
-        print(f'raw output {rst}')
-        arxiv_logger.warning(f'Response parse error in longtext_paper_qa.')
-        fix_parser = OutputFixingParser.from_llm(parser=parser_fix, llm=ChatOpenAI(model_name='gpt-4o', temperature=0))
-        p_rst = fix_parser.parse(rst)
-        print(f'fixed output {p_rst}')
-    return p_rst
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=400,
+            chunk_overlap=0,
+            separators=[',', "\n"]
+        )
+    # text_splitter = SemanticChunker(OpenAIEmbeddings())
+
+        texts = text_splitter.create_documents([markdown_text])
+    except Exception as e:
+        return []
+
+    def filter_list(input_list):
+        substrings = ['Tab.', 'Table', 'Figure', 'Fig.',]
+        output_set = set()
+        output_list = []
+
+        for item in input_list:
+            if any(substring in item.page_content for substring in substrings):
+                if item.page_content not in output_set:
+                    output_list.append(item.page_content)
+                    output_set.add(item.page_content)
+        return output_list
+    return filter_list(texts)
+
+
+
+import re
+def filter_list(input_list,pattern = r'\b(Fig\.?|Figure|FIG|FIGURE)\b'): # r'\b(Table|TAB|TABLE|Tab\.)\b'
+    # 编译一个正则表达式模式来检查包含 'www.'、'http:'、'https:' 等子串的内容
+    # pattern = re.compile(r'www\.|http:|https:|\.com|github|sway')
+    pattern = re.compile(pattern, re.IGNORECASE)
+    output_set = set()
+    output_list = []
+
+    for item in input_list:
+        # 使用预编译的正则表达式一次性检查所有子串
+        if pattern.search(item.page_content):
+            # 只添加不在集合中的项
+            if item.page_content not in output_set:
+                output_list.append(item)
+                output_set.add(item.page_content)
+    return output_list
+def naive_figtab_checker(pdf_pth):
+    try:
+        loader = PDFMinerLoader(pdf_pth)
+        data = loader.load()
+        raw_content = ''.join([d.page_content for d in data])
+        text_splitter = RecursiveCharacterTextSplitter(
+            # Set a really small chunk size, just to show.
+            chunk_size=400,
+            chunk_overlap=0,
+            separators=[',', '.',"\n\n", ' ']
+        )
+        # text_splitter = SemanticChunker(OpenAIEmbeddings())
+        texts = text_splitter.create_documents([raw_content])
+    except Exception as e:
+        return []
+    rst = {'fig':filter_list(texts, r'\b(Fig\.?|Figure|FIG|FIGURE)\b'), 'tab': filter_list(texts,r'\b(Table|TAB|TABLE|Tab\.)\b')}
+    return rst
+class Fig_Response(BaseModel):
+    FIGURE_CAPTION: List[str] = Field(
+        description="Regardless of any formatting issues, list the captions of all figures in the order they actually appear in the document. Format your answer like ['Fig. 1: CAPTION', 'Fig. 2: CAPTION', ...].")
+    TABLE_CAPTION: List[str] = Field(
+        description="Regardless of any formatting issues, list the captions of all tables in the order they actually appear in the document.  Format your answer like ['Tab. 1: CAPTION', 'Tab. 2: CAPTION', ...]. ")
+
+fig_parser = PydanticOutputParser(pydantic_object=Fig_Response)
+# @retry()
+def fig_tab_extractor(pdf_pth):
+    try:
+
+
+        top_ss_chunks = naive_figtab_checker(pdf_pth)
+        figs = top_ss_chunks['fig']
+        tabs = top_ss_chunks['tab']
+        top_fig_chunks = [i.page_content for i in figs]
+        top_tab_chunks = [i.page_content for i in tabs]
+        if len(top_ss_chunks) > 0:
+            prompt_template = """Below are sentences extracted from an academic paper PDF file that contain mentions of figures and tables. Please parse the content and use it to extract all the figure or table captions present in the paper. Focus specifically on any text chunks containing the terms 'fig', 'figure', or 'table', 'tab'. 
+
+            Text Chunks (Figure): {fig_chunks}
+            Text Chunks (Table): {tab_chunks}
+            Question: Based on the provided sentences, extract all figure or table captions from the text. Ensure only the captions belonging to figures, charts, or tables from the current paper are included.
+
+
+            Format Instruction:
+            {format_instructions}
+            """
+
+            PROMPT = PromptTemplate(
+                template=prompt_template, input_variables=['fig_chunks','tab_chunks'],
+                partial_variables={"format_instructions": fig_parser.get_format_instructions()},
+            )
+            chain = LLMChain(llm=ChatOpenAI(model_name="gpt-4o-mini", temperature=0),
+                             prompt=PROMPT)
+
+            rst = chain.run(fig_chunks=' || '.join(top_fig_chunks),tab_chunks=' || '.join(top_tab_chunks))
+
+            try:
+                p_rst = fig_parser.parse(rst)
+            except OutputParserException as e:
+                print(f'OA Checker Parser Error: {e}. || {top_ss_chunks} || {rst}')
+                return False
+            if len(p_rst.FIGURE_CAPTION + p_rst.TABLE_CAPTION) > 0:
+                return p_rst
+            else:
+                return None
+        else:
+            return None
+    except Exception as e:
+
+        raise Exception('Error occurs in github_checker:', e)
+        return None

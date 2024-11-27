@@ -3,8 +3,8 @@ from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, DateTime, Float, Text
 from sqlalchemy.ext.declarative import declarative_base
-from furnace.arxiv_paper import Arxiv_paper
-from furnace.semantic_scholar_paper import S2paper
+from retrievers.arxiv_paper import Arxiv_paper
+from retrievers.semantic_scholar_paper import S2paper
 
 Base = declarative_base()
 
@@ -60,6 +60,8 @@ class PaperMapping(Base):
     RUI = Column(Float)
     IEI = Column(Float)
     IEI_I6 = Column(Float)
+    IEI_norm = Column(Float)
+    IEI_I6_norm = Column(Float)
     TNCSI_loc = Column(Float)
     TNCSI_scale = Column(Float)
     CDR = Column(Float)
@@ -67,10 +69,18 @@ class PaperMapping(Base):
     page_count = Column(Integer)
     word_count = Column(Integer)
     review_type = Column(String(255))
-    propose_taxonomy = Column(Integer)
+    taxonomy = Column(Integer)
     benchmark = Column(Integer)
-    propose_new_method = Column(Integer)
-    type_MC_CO = Column(Integer) #1 Method clustering 2 challenge oriented 3 others
+    preliminary    = Column(Integer)
+    PRISMA = Column(Integer)
+    future = Column(Integer)
+    application = Column(Integer)
+    feature_analyzed = Column(Integer)
+    paper_num_pages = Column(Integer)
+    num_figs = Column(Integer)
+    num_tabs = Column(Integer)
+    fig_caps = Column(Text)
+    tab_caps = Column(Text)
     def __init__(self, arxiv_paper: Arxiv_paper = None, s2_paper: S2paper = None, search_by_keywords=None):
         if arxiv_paper is not None:
             # 生成UUID

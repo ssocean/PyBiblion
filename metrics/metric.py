@@ -4,7 +4,7 @@ import statistics
 import time
 
 from cfg.config import s2api
-from furnace.semantic_scholar_paper import S2paper, request_query
+from retrievers.semantic_scholar_paper import S2paper, request_query
 from tools.gpt_util import get_chatgpt_field
 from tools.ref_utils import _get_TNCSI_score, get_s2citaions_per_month
 import datetime
@@ -488,7 +488,13 @@ def plot_time_vs_aFNCSI(sp: S2paper, loc, scale):
     aFNCSIs = []
     areas = []
     sp_pub_date = sp.publication_date
-    for i in tqdm(sp.references):
+    refs = []
+    if isinstance(sp, list):
+        pass
+    else:
+        refs = sp.references
+
+    for i in tqdm(refs):
 
         ref_time = len(i._entity['contexts'])
         # importance = min(math.log10(ref_time + 1),1)

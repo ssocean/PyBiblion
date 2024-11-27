@@ -7,7 +7,7 @@ from retry import retry
 from scipy.stats import spearmanr, pearsonr
 from CACHE.CACHE_Config import generate_cache_file_name
 from cfg.config import eskey, openai_key, s2api
-from furnace.semantic_scholar_paper import S2paper, request_query
+from retrievers.semantic_scholar_paper import S2paper, request_query
 import openai
 
 from tools.gpt_util import _get_ref_list
@@ -17,8 +17,6 @@ openai.api_key = openai_key
 import math
 import re
 from pdfminer.high_level import extract_text
-from scholarly import scholarly
-from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -160,7 +158,7 @@ import datetime
 import arxiv
 from arxiv import SortCriterion, SortOrder
 
-from tools.Reference import Ref
+from local_deprecated.Reference import Ref
 
 
 def get_arxiv(keywords, max_results=float('inf')):
@@ -243,7 +241,6 @@ def get_google(query, topk=100, year_low: int = None,
 
 
 import datetime
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 
@@ -360,9 +357,9 @@ def plot_s2citaions(keyword: str, total_num=2000):
     continue_token = None
     for i in range(0, total_num, 1000):
         if continue_token is None:
-            response = request_query(keyword, sort_rule=sort_rule, pub_date=datetime.now())
+            response = request_query(keyword, sort_rule=sort_rule, later_date=datetime.now())
         else:
-            response = request_query(keyword, sort_rule=sort_rule, continue_token=continue_token,pub_date=datetime.now())
+            response = request_query(keyword, sort_rule=sort_rule, continue_token=continue_token,later_date=datetime.now())
 
         if "token" in response:
             continue_token = response['token']

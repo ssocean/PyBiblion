@@ -124,8 +124,144 @@ def extract_keyword_from_pdf(fpth):
 #         result += choice.message.content
 #     result = result.split('\n')
 #     return result
+from markdown_it import MarkdownIt
+from bs4 import BeautifulSoup
+import re
+
+
+def get_structure_md(md_pth):
+    # 初始化MarkdownIt实例
+    md = MarkdownIt()
+    import md_toc
+    # 读取Markdown文件内容
+    with open(md_pth, 'r', encoding='utf-8') as md_file:
+        markdown_text = md_file.read()
+    # 使用mdtoc生成目录
+    # 将Markdown解析为HTML
+    html_content = md.render(markdown_text)
+
+    # 使用BeautifulSoup解析HTML
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # 查找所有标题（h1-h6）
+    headings = soup.find_all(re.compile('^h[1-6]$'))
+
+    # 存储标题层级和内容的字典
+    content_dict = []
+
+    # 遍历所有标题，提取层级和内容
+    for i, heading in enumerate(headings):
+        level = int(heading.name[1])  # 获取标题的级别，例如 h2 -> 2, h3 -> 3
+        title = heading.get_text()  # 获取标题的文本内容
+
+        # 找到标题下的所有兄弟节点，直到下一个标题为止
+        content = []
+        for sibling in heading.find_next_siblings():
+            if sibling.name and sibling.name.startswith('h'):
+                break
+            content.append(sibling.get_text().strip())
+
+        # 存储标题、层级和内容
+        content_dict.append({
+            'ID': i,
+            'level': level,
+            'title': title,
+            'content': ' '.join(content).strip()
+        })
+    return content_dict
+
+
+def get_toc_from_md(md_dict_list,remove_abs_ref = True):
+    if md_dict_list:
+        current_indent = 0
+        previous_level = 0
+
+        output = ""
+        abstract_index = -1
+        reference_index = len(md_dict_list)
+        if remove_abs_ref:
+            for i, item in enumerate(md_dict_list):
+                if item['title'].lower() == 'abstract':
+                    abstract_index = i
+                if item['title'].lower() == 'references' or item['title'].lower() == 'reference':
+                    reference_index = i
+
+
+        for item in md_dict_list[abstract_index + 1:reference_index]:
+            if item['level'] > previous_level:
+                current_indent += 1
+            elif item['level'] < previous_level:
+                current_indent -= 1
+
+            current_indent = max(current_indent, 0)
+
+            indent = '\t' * item['level']
+
+            output += f"{indent}[Heading. {item['level']}: {item['title']}]\n"
+
+            previous_level = item['level']
+
+        return output
+    else:
+        return None
+
+def get_idtoc_from_md(md_dict_list,remove_abs_ref = True):
+    if md_dict_list:
+        current_indent = 0
+        previous_level = 0
+
+        output = ""
+        abstract_index = -1
+        reference_index = len(md_dict_list)
+        if remove_abs_ref:
+            for i, item in enumerate(md_dict_list):
+                if item['title'].lower() == 'abstract':
+                    abstract_index = i
+                if item['title'].lower() == 'references' or item['title'].lower() == 'reference':
+                    reference_index = i
+
+
+        for item in md_dict_list[abstract_index + 1:reference_index]:
+            if item['level'] > previous_level:
+                current_indent += 1
+            elif item['level'] < previous_level:
+                current_indent -= 1
+
+            current_indent = max(current_indent, 0)
+
+            indent = '\t' * item['level']
+
+            output += f"{indent}[Heading. {item['level']}: {item['title']}]\n"
+
+            previous_level = item['level']
+
+        return output
+    else:
+        return None
+# print(get_toc_from_md(get_structure_md(
+#     r'J:\md\output\1007.3987v1.An_Empirical_Pixel_Based_Correction_for_Imperfect_CTE__I__HST_s_Advanced_Camera_for_Surveys.mmd'),
+#                       remove_abs_ref=False))
+
+
+def extract_title_and_abstract(md_pth: str):
+    with open(md_pth, 'r', encoding='utf-8') as md_file:
+        md_content = md_file.read()
+        # Split content into lines
+        lines = md_content.splitlines()
+
+        # Extract title (first non-empty line, remove leading #)
+        title = next((line.lstrip('# ').strip() for line in lines if line.strip()), "")
+
+        # Extract abstract (line after "###### Abstract")
+        abstract_match = re.search(r"###### Abstract\s*\n(.+)", md_content)
+        abstract = abstract_match.group(1).strip() if abstract_match else None
+
+        return title, abstract
+
+
 
 
 if __name__ == "__main__":
-    titles = get_subtitles(r'xxx')
-    print(titles)
+    # titles = get_subtitles(r'xxx')
+    # print(titles)
+    pass

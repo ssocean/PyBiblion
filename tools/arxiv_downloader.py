@@ -9,7 +9,7 @@ import threading
 
 from cfg.safesession import session_factory
 from database.DBEntity import PaperMapping
-from furnace.arxiv_paper import Arxiv_paper
+from retrievers.arxiv_paper import Arxiv_paper
 
 from retry import retry
 # 单个搜索结果处理函数@
@@ -116,13 +116,16 @@ def main(session):
 
     for err in total_error_list:
         print(err)
-main(session_factory)
-# search = arxiv.Search(query=f'computer vision survey',
-#                           max_results=float('inf'),
-#                           sort_by=arxiv.SortCriterion.Relevance,
-#                           sort_order=arxiv.SortOrder.Descending)
-# p = []
-# for result in search.results():
-#     p.append(result)
-#
-# print(len(p))
+
+if __name__ == '__main__':
+    main(session_factory)
+
+    # search = arxiv.Search(query=f'computer vision survey',
+    #                           max_results=float('inf'),
+    #                           sort_by=arxiv.SortCriterion.Relevance,
+    #                           sort_order=arxiv.SortOrder.Descending)
+    # p = []
+    # for result in search.results():
+    #     p.append(result)
+    #
+    # print(len(p))
