@@ -1,22 +1,16 @@
-
 import random
 import sys
 import os
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 from retry import retry
-import re
 from tqdm import tqdm
-from retrievers.Author import Author
-from retrievers.Publication import Document
-import logging
 import math
 import statistics
-import time
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from cfg.config import s2api
-from tools.gpt_util import get_chatgpt_field, get_chatgpt_fields
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 CACHE_FILE = r"CACHE\.queryCache"
@@ -25,66 +19,10 @@ from CACHE.CACHE_Config import generate_cache_file_name
 import requests
 from urllib.parse import urlencode
 import shelve
+from scipy.integrate import cumtrapz
+from scipy import stats
 
-@retry()
-def _plot_s2citaions(keyword: str, year: str = None, total_num=2000, CACHE_FILE='.ppicache'):
-    '''
 
-    :param keyword: topic keyword
-    :param year: like 2018-2023 || 2018
-    :param total_num:  fetching up to total_num results
-    :param CACHE_FILE:
-    :return:
-    '''
-    l = 0
-    citation_count = []
-    influentionCC = []
-
-    for i in range(int(total_num / 100)):
-        if year:
-            url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={keyword}&fieldsOfStudy=Computer Science&year={year}&fields=title,year,citationCount,influentialCitationCount&offset={100 * i}&limit=100'
-        else:
-            url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={keyword}&fieldsOfStudy=Computer Science&fields=title,year,citationCount,influentialCitationCount&offset={100 * i}&limit=100'
-        with shelve.open(generate_cache_file_name(url)) as cache:
-            if url in cache:
-                r = cache[url]
-            else:
-
-                if s2api is not None:
-                    headers = {
-                        'x-api-key': s2api
-                    }
-                else:
-                    headers = None
-                r = requests.get(url, headers=headers, verify=True)
-                try:
-                    r.raise_for_status()
-                except Exception as e:
-                    logger.warning(e)
-                    continue
-                time.sleep(3.05)
-                cache[url] = r
-
-        # print(r.json())
-
-        try:
-            if 'data' not in r.json():
-                # logger.info(f'Fetching {l} data from SemanticScholar.')
-                return citation_count, influentionCC
-                # raise ConnectionError
-
-            for item in r.json()['data']:
-                if int(item['citationCount']) >= 0:
-                    citation_count.append(int(item['citationCount']))
-                    influentionCC.append(int(item['influentialCitationCount']))
-                    l += 1
-                else:
-                    print(item['citationCount'])
-        except:
-            continue
-
-        # logger.info(f'Fetch {l} data from SemanticScholar.')
-    return citation_count, influentionCC
 def relevance_query(query, pub_date: datetime = None):
     '''
     :param query: keyword
@@ -143,8 +81,8 @@ def relevance_query(query, pub_date: datetime = None):
 
 @retry()
 def get_s2citaions_per_month(title, total_num=2000):
+    from .semantic_scholar_paper import S2paper
     '''
-
     :param keyword: topic keyword
     :param year: like 2018-2023 || 2018
     :param total_num:  fetching up to total_num results
@@ -248,30 +186,9 @@ def _get_TNCSI_score(citation:int, loc, scale):
     aFNCSI = exponential_cdf(citation, loc, scale)
     return aFNCSI
 def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:datetime=None,mode=1):
-    import numpy as np
-    import matplotlib.pyplot as plt
 
-    import numpy as np
-    from scipy import stats
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-    from PIL import Image
-    import io
-
-
-
-
-    citation, _ = _plot_s2citaions(topic, total_num=1000,pub_date=pub_date,mode=mode)
+    citation, _ = get_citation_discrete_distribution(topic, total_num=1000, pub_date=pub_date, mode=mode)
     citation = np.array(citation)
-    # print(citation)
-    # 绘制直方图
-    # plt.hist(citation, bins=1000, density=False, alpha=0.7, color='skyblue')
-    # # 添加标题和标签
-    # plt.title('Distribution of Data')
-    # plt.xlabel('Value')
-    # plt.ylabel('Density')
-    # 显示图形
-    # plt.show()
 
     # 拟合数据到指数分布
     try:
@@ -304,7 +221,7 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:d
 
     return loc, scale  # , image
 @retry(delay=6)
-def _plot_s2citaions(keyword: str, year: str = None, total_num=1000, pub_date:datetime=None,mode=1):
+def get_citation_discrete_distribution(keyword: str, year: str = None, total_num=1000, pub_date:datetime=None, mode=1):
     '''
 
     :param keyword: topic keyword
@@ -416,6 +333,7 @@ def _plot_s2citaions(keyword: str, year: str = None, total_num=1000, pub_date:da
 
 @retry(tries=3)
 def get_TNCSI(ref_obj, ref_type='entity', topic_keyword=None, save_img_pth=None,show_PDF=False,same_year=False,mode=1):
+    from .semantic_scholar_paper import S2paper
     if ref_type == 'title':
         s2paper = S2paper(ref_obj)
     elif ref_type == 'entity':
@@ -568,7 +486,7 @@ def get_median_pubdate(pub_time, refs):
 
 
 
-def plot_time_vs_aFNCSI(sp: S2paper, loc, scale):
+def plot_time_vs_aFNCSI(sp, loc, scale):
     def create_cool_colors():
         colors = ["#D6EDFF", "#B1DFFF", "#8CCBFF", "#66B8FF", "#FF69B4",
                   "#1D8BFF", "#0077E6", "#005CBF", "#00408C", "#002659"]
@@ -654,7 +572,7 @@ def plot_time_vs_aFNCSI(sp: S2paper, loc, scale):
 
 
 def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20,topic_keyword=None):
-
+    from .semantic_scholar_paper import S2paper
 
     if ref_type == 'title':
         s2paper = S2paper(ref_obj)
@@ -717,9 +635,7 @@ def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20,topic_keyword=Non
     return rst
 
 
-import numpy as np
-import scipy.stats as stats
-from scipy.integrate import cumtrapz
+
 def get_RAD(M_pc):
     x = M_pc/12
     coefficients= np.array([-0.0025163,0.00106611, 0.12671325, 0.01288683])

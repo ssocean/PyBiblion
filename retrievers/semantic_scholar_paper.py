@@ -1,30 +1,17 @@
-import random
 import sys
 import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
-from retry import retry
 import re
-from tqdm import tqdm
 from retrievers.Author import Author
 from retrievers.Publication import Document
 import logging
-import math
-import statistics
-import time
-from collections import OrderedDict
-from datetime import datetime, timedelta
-from cfg.config import s2api
 from tools.gpt_util import get_chatgpt_field, get_chatgpt_fields
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 CACHE_FILE = r"CACHE\.queryCache"
-from filelock import Timeout, FileLock
-from CACHE.CACHE_Config import generate_cache_file_name
-import requests
-from urllib.parse import urlencode
-import shelve
-from retriever_utils import *
+from retry import retry
+from .metric_util import *
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 

@@ -238,9 +238,6 @@ def get_idtoc_from_md(md_dict_list,remove_abs_ref = True):
         return output
     else:
         return None
-# print(get_toc_from_md(get_structure_md(
-#     r'J:\md\output\1007.3987v1.An_Empirical_Pixel_Based_Correction_for_Imperfect_CTE__I__HST_s_Advanced_Camera_for_Surveys.mmd'),
-#                       remove_abs_ref=False))
 
 
 def extract_title_and_abstract(md_pth: str):
