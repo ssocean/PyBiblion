@@ -6,13 +6,11 @@
   PyBiblion
 </h1>
 
-### [Early Access Version]
-######  The [paper](https://arxiv.org/abs/2402.12928) are currently undergoing peer review, and the code may be adjusted at any time. If you have any issues about the paper or this repo, contact us via Email: oceanytech@gmail.com or issues as you prefer.
 
 ## Introduction
 
 This repository contains the official code implementation for the Paper [A Literature Review of Literature Reviews in Pattern Analysis and Machine
-Intelligence](https://arxiv.org/abs/2402.12928). Our goal is to provide a set of tools to assist researchers and scholars in conducting efficient and in-depth bibliometric analyses in the field.
+Intelligence](https://arxiv.org/abs/2402.12928) ([arXiv](https://arxiv.org/abs/2402.12928)).Our goal is to provide a set of tools to assist researchers and scholars in conducting efficient and in-depth bibliometric analyses in the field.
 
 Note: The term "biblion" is derived from the ancient Greek word "βιβλίον" (biblíon), means book or literature.
 
@@ -44,6 +42,7 @@ pip install -r requirements.txt
 You can calculate our metrics with only **one line of code**!!! Just kick off with 
 
 ```python
+from retrievers.semantic_scholar_paper import S2paper
 S2paper('INPUT TITLE HERE').TNCSI
 ```
 
@@ -61,5 +60,5 @@ If you find this work useful for your research, please consider citing it as fol
 ```
 
 ## Acknowledgements
-This project makes use of code from the [litstudy](https://github.com/NLeSC/litstudy) project, which is aimed at facilitating literature study in scientific research. We are grateful to the authors of litstudy for their valuable contributions to the open-source community. 
+This project uses a few code snippets from the [litstudy](https://github.com/NLeSC/litstudy) project, which is aimed at facilitating literature study in scientific research. We are grateful to the authors of litstudy for their valuable contributions to the open-source community. 
 
