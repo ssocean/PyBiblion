@@ -7,8 +7,7 @@
 *.pkl
 .idea/workspace.xml
 /.idea
-config.py
-cfg/safesession.py
+/
 /tools/__pycache__
 /local_test
 /local_deprecated
