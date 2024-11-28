@@ -1,18 +1,19 @@
 import json
-import shelve
 import sys
 import os
+
+from CACHE.cache_request import cached_post
+from cfg import config
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 import requests
 from retry import retry
-from CACHE.cache_request import generate_cache_file_name
 from cfg.config import *
 
 
 class Author():
     def __init__(self, name, **kwargs):
-        self.CACHE_FILE = generate_cache_file_name(force_file_name='.authorsCache')
         self.name = name
         self.kwargs = kwargs
         # print(kwargs)
@@ -28,6 +29,11 @@ class Author():
         # self._i10_l5 = None
         # self._s2_id = None
         self._entity = None
+        self.headers = None
+        if s2api is not None:
+            self.headers = {
+                'x-api-key': s2api
+            }
 
     def __str__(self):
         # obj_dict = {k: v for k, v in self.__dict__.items() if v is not None}
@@ -47,30 +53,20 @@ class Author():
     @retry()
     def entity(self):
         if self._entity is None:
-            with shelve.open(self.CACHE_FILE) as cache:
-                if self.s2_id:
-                    if self.s2_id in cache:
-                        r = cache[self.s2_id]
-                    else:
-                        if config.s2api is not None:
-                            headers = {
-                                'x-api-key': config.s2api
-                            }
-                        else:
-                            headers = None
-                        r = requests.post(
-                            'https://api.semanticscholar.org/graph/v1/author/batch',
-                            params={'fields': 'name,hIndex,citationCount,aliases,homepage,affiliations,paperCount,url'},
-                            json={"ids": [self.s2_id]},headers=headers
-                        )
-                        cache[self.s2_id] = r
-                    try:
-                        self._entity = dict(r.json()[0])
-                    except:
-                        print(r.json())
-                    return self._entity
-                else:
-                    self._entity = False
+
+
+            if self.s2_id:
+                reply = cached_post('https://api.semanticscholar.org/graph/v1/author/batch',
+                                    params={
+                                        'fields': 'name,hIndex,citationCount,aliases,homepage,affiliations,paperCount,url'},
+                                    json={"ids": [self.s2_id]}, headers=self.headers)
+                try:
+                    self._entity = dict(reply.json()[0])
+                except:
+                    print(reply.json())
+                return self._entity
+            else:
+                self._entity = False
         return self._entity
 
     @property

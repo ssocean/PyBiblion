@@ -1,6 +1,6 @@
 import shelve
 import requests
-from CACHE.cache_request import generate_cache_file_name
+from CACHE.cache_request import generate_cache_file_name, cached_get
 from database.DBEntity import PaperMapping, CoP
 from retrievers.arxiv_paper import Arxiv_paper
 import concurrent.futures
@@ -103,27 +103,13 @@ def update_s2_ref(session):
 
             url = f'https://api.semanticscholar.org/graph/v1/paper/{row.s2_id}/references?fields=paperId,title,authors,intents,contexts,isInfluential,url,publicationVenue,openAccessPdf,abstract,venue,year,referenceCount,citationCount,influentialCitationCount,s2FieldsOfStudy,publicationTypes,journal,publicationDate&offset=0&limit=1000'
 
-            with shelve.open(generate_cache_file_name(url)) as cache:
-                # ref_count = row.s2_reference_count
-
-                if url in cache:
-                    # print('Cache loding')
-                    reply = cache[url]
-                    # print('Cache Loading Done')
-                else:
-                    # continue
-                    req_session = requests.Session()
-                    # s2api = None
-                    if s2api is not None:
-                        headers = {
-                            'x-api-key': s2api
-                        }
-                    else:
-                        headers = None
-                    reply = req_session.get(url, headers=headers)
-                    cache[url] = reply
-
-                    time.sleep(0.33)
+            headers = None
+            if s2api is not None:
+                headers = {
+                    'x-api-key': s2api
+                }
+            reply = cached_get(url, headers=headers)
+            time.sleep(0.33)
             try:
                 response = reply.json()  # 0.15s
             except:
@@ -151,41 +137,28 @@ def update_s2_citation(session):
                 while (True):
                     url = f'https://api.semanticscholar.org/graph/v1/paper/{row.s2_id}/citations?fields=paperId,title,venue,year,referenceCount,citationCount,publicationDate,publicationTypes&offset={OFFSET}&limit=1000'
 
-                    with shelve.open(generate_cache_file_name(url)) as cache:
-                        print(url)
-                        if url in cache:
-                            # print('Cache loding')
-                            reply = cache[url]
-                            # print('Cache Loading Done')
-                        else:
-                            time.sleep(1)
-                            req_session = requests.Session()
-                            # s2api = None
-                            if s2api is not None:
-                                headers = {
-                                    'x-api-key': s2api
-                                }
-                            else:
-                                headers = None
-                            reply = req_session.get(url, headers=headers, verify=False)
 
-                            cache[url] = reply
 
-                        try:
-                            response = reply.json()  # 0.15s
-                        except:
-                            OFFSET += 1000
-                            continue
+                    headers = None
+                    if s2api is not None:
+                        headers = {
+                            'x-api-key': s2api
+                        }
+                    reply = cached_get(url,  headers=headers)
+                    try:
+                        response = reply.json()  # 0.15s
+                    except:
+                        OFFSET += 1000
+                        continue
 
-                        if "data" in response:
-                            citation_responses.append(response)
-                            if response['data'] == []:
-                                break
-                            OFFSET += 1000
-                            # cache[url] = reply
-
-                        else:
+                    if "data" in response:
+                        citation_responses.append(response)
+                        if response['data'] == []:
                             break
+                        OFFSET += 1000
+                        # cache[url] = reply
+                    else:
+                        break
 
                 row.full_citation = json.dumps(citation_responses)
                 session.commit()

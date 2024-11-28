@@ -1,31 +1,22 @@
-import random
 import sys
 import os
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
-from retry import retry
-from tqdm import tqdm
 import math
 import statistics
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from cfg.config import s2api
-S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
-S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
-CACHE_FILE = r"CACHE\.queryCache"
-from filelock import Timeout, FileLock
-from CACHE.cache_request import generate_cache_file_name, cached_get
-import requests
+from CACHE.cache_request import cached_get
 from urllib.parse import urlencode
-import shelve
 from scipy.integrate import cumtrapz
 from scipy import stats
 from retry import retry
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import comb
-
+S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
+S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 
 
 def _get_TNCSI_score(citation:int, loc, scale):
