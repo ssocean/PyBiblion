@@ -297,7 +297,7 @@ class S2paper(Document):
                     cache = shelve.open(cache_file)
                 except Exception as e:
                     print(f"Error opening shelve: {e}")
-                    cache = shelve.open(cache_file)  # 尝试重新打开，或者根据你的需要处理
+                    cache = shelve.open(cache_file)  # 
                 finally:
                     if 'cache' in locals():
                         with cache:

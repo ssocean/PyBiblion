@@ -83,10 +83,10 @@ class PaperMapping(Base):
     tab_caps = Column(Text)
     def __init__(self, arxiv_paper: Arxiv_paper = None, s2_paper: S2paper = None, search_by_keywords=None):
         if arxiv_paper is not None:
-            # 生成UUID
+            # 
             idLiterature = uuid.uuid4()
 
-            # 将UUID转换为字符串
+            # 
             self.idLiterature = str(idLiterature)
             self.title = arxiv_paper.title
             self.publication_date = arxiv_paper.publication_date
@@ -132,7 +132,7 @@ class PaperMapping(Base):
 
 
 class CoP(Base):
-    __tablename__ = 'cop'  # 映射到数据库中的表名
+    __tablename__ = 'cop'  # 
     idCoP = Column(String(36), primary_key=True)
     s2_id = Column(String(45),unique=True)
     citation = Column(Text)
@@ -140,7 +140,7 @@ class CoP(Base):
 
 
     def __init__(self, s2_id,citation):
-        # 生成UUID
+        # 
         self.idCoP = str(uuid.uuid4())
         self.s2_id = s2_id
         self.citation = citation

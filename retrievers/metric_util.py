@@ -149,26 +149,26 @@ def get_s2citaions_per_month(title, total_num=2000):
                     missing_count += 1
                     continue
     # print(f'Missing count:{missing_count}')
-    # 将字典按照时间从最近到最远排序
+    # 
     # print(citation_count)
 
     sorted_data = OrderedDict(
         sorted(citation_count.items(), key=lambda x: datetime.strptime(x[0], "%Y.%m"), reverse=True))
     # print(f'{s2id} missing {missing_count} due to abnormal info.')
-    # 获取最近的月份和最远的月份
+    # 
     latest_month = datetime.now()#.strptime(s2paper.publication_date, "%Y.%m")# datetime.now().strftime("%Y.%m")
     earliest_month = s2paper.publication_date#.strftime("%Y.%m")#datetime.strptime(s2paper.publication_date, "%Y.%m")
 
-    # 创建包含所有月份的列表
+    # 
     all_months = [datetime.strftime(latest_month, "%Y.%#m")]
     while latest_month > earliest_month:
-        latest_month = latest_month.replace(day=1)  # 设置为月初
-        latest_month = latest_month - timedelta(days=1)  # 上一个月
+        latest_month = latest_month.replace(day=1)  # 
+        latest_month = latest_month - timedelta(days=1)  # 
         all_months.append(datetime.strftime(latest_month, "%Y.%#m"))
 
-    # 对缺失的月份进行补0
+    # 
     result = {month: sorted_data.get(month, 0) for month in all_months}
-    # 将字典按照时间从最近到最远排序
+    # 
     result = OrderedDict(sorted(result.items(), key=lambda x: datetime.strptime(x[0], "%Y.%m"), reverse=True))
     # print(dict(result))
     return result
@@ -190,7 +190,7 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:d
     citation, _ = get_citation_discrete_distribution(topic, total_num=1000, pub_date=pub_date, mode=mode)
     citation = np.array(citation)
 
-    # 拟合数据到指数分布
+    # 
     try:
         params = stats.expon.fit(citation)
     except:
@@ -199,18 +199,18 @@ def fit_topic_pdf(topic, topk=2000, show_img=False, save_img_pth=None,pub_date:d
     loc, scale = params
     if len(citation)<=1:
         return None, None
-    # 生成拟合的指数分布曲线
+    # 
     x = np.linspace(np.min(citation), np.max(citation), 100)
     pdf = stats.expon.pdf(x, loc, scale)
 
-    # 绘制原始数据和拟合的指数分布曲线
+    # 
     if show_img or save_img_pth:
         plt.clf()
         plt.figure(figsize=(6, 4))
         plt.hist(citation, bins=1000, density=True, alpha=0.5)
         plt.plot(x, pdf, 'r', label='Fitted Exponential Distribution')
         plt.xlabel('Number of Citations')
-        # 设置 y 轴标签
+        # 
         plt.ylabel('Frequency')
         plt.legend()
         if save_img_pth:
@@ -238,14 +238,14 @@ def get_citation_discrete_distribution(keyword: str, year: str = None, total_num
         date_six_months_ago = None
         date_six_months_later = None
     else:
-        # 计算半年前的日期
-        six_months = timedelta(days=183)  # 大约半年的天数
+        # 
+        six_months = timedelta(days=183)  # 
         date_six_months_ago = pub_date - six_months
 
-        # 计算半年后的日期
+        # 
         date_six_months_later = pub_date + six_months
 
-        # 格式化日期范围为 "YYYY-MM-DD:YYYY-MM-DD"
+        # 
         publicationDateOrYear = f"&publicationDateOrYear={date_six_months_ago.strftime('%Y-%m')}:{date_six_months_later.strftime('%Y-%m')}"
 
 
@@ -265,7 +265,7 @@ def get_citation_discrete_distribution(keyword: str, year: str = None, total_num
                     cache = shelve.open(cache_file)
                 except Exception as e:
                     print(f"Error opening shelve: {e}")
-                    cache = shelve.open(cache_file)  # 尝试重新打开，或者根据你的需要处理
+                    cache = shelve.open(cache_file)  # 
                 finally:
                     if 'cache' in locals():
                         with cache:
@@ -395,7 +395,7 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
         rst['L6'] = float('-inf')
         rst['I6'] = float('-inf')
         return rst
-    # 六个坐标点
+    # 
     x = [i for i in range(actual_len)]
     subset = list(spms.items())[exclude_last_n_month:exclude_last_n_month+actual_len][::-1]
     y = [item[1] for item in subset]
@@ -405,12 +405,12 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
         max_y = max(y)
         range_y = max_y - min_y
         if range_y == 0:
-            y = [0 for _ in y]  # 或者 y = [1 for _ in y], 根据你的需求
+            y = [0 for _ in y]  # 
         else:
             y = [(y_i - min_y) / range_y for y_i in y]
-    # 拟合五次贝塞尔曲线
+    # 
     t = np.linspace(0, 1, 100)
-    n = len(x) - 1  # 控制点的数量
+    n = len(x) - 1  # 
     curve_x = np.zeros_like(t)
     curve_y = np.zeros_like(t)
     # print(n,y)
@@ -420,7 +420,7 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
         curve_y += comb(n, i) * (1 - t) ** (n - i) * t ** i * y[i]
     if show_img or save_img_pth:
         print('IEI绘图执行')
-        # 绘制曲线
+        # 
         plt.clf()
         fig = plt.figure(figsize=(6, 4), dpi=300)  # Increase DPI for high resolution
         plt.style.use('seaborn-v0_8')
@@ -453,8 +453,8 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
         slope_avg.append(dy_dt[i] / dx_dt[i])
     slope_avg.append(I6)
     # print(slope_avg)
-    # print('平均', sum(slope_avg) / 6)
-    # print("瞬时斜率:", I6)
+    # 
+    # 
     rst = {}
     rst['L6'] = sum(slope_avg) / 6 if not math.isnan(sum(slope_avg)) else float('-inf')
     rst['I6'] = I6 if not math.isnan(I6) else float('-inf')
@@ -468,17 +468,17 @@ def get_IEI(title, show_img=False, save_img_pth=None,exclude_last_n_month=1,norm
 
 
 def get_median_pubdate(pub_time, refs):
-    # 收集1970年之后的出版日期
+    # 
     pub_dates = [i.publication_date for i in refs if i.publication_date and i.publication_date >= datetime(1970, 1, 1)]
 
-    # 如果pub_dates为空，返回-1
+    # 
     if not pub_dates:
         return -1
 
-    # 将日期转换为时间戳进行排序
+    # 
     timestamps = [d.timestamp() for d in sorted(pub_dates, reverse=True)]
 
-    # 计算中位数时间戳并转换回日期
+    # 
     median_timestamp = statistics.median(timestamps)
     median_value = datetime.fromtimestamp(median_timestamp)
 
@@ -502,10 +502,10 @@ def plot_time_vs_aFNCSI(sp, loc, scale):
     def sigmoid(x):
         return 1 / (1 + math.exp(-x))
 
-    # 创建冷色系
+    # 
     cool_cmap = create_cool_colors()
 
-    # 创建暖色系
+    # 
     warm_cmap = create_warm_colors()
     times = []
     aFNCSIs = []
@@ -566,7 +566,7 @@ def plot_time_vs_aFNCSI(sp, loc, scale):
     plt.scatter(x, y, s=area, c=colors, alpha=0.5)
     plt.xlabel('Month Before Publication')
 
-    # 设置 y 轴标签
+    # 
     plt.ylabel('aTNCSI')
     plt.savefig(f'{sp.title}.svg')
 
@@ -602,10 +602,10 @@ def get_RQM(ref_obj, ref_type='entity', tncsi_rst=None,beta=20,topic_keyword=Non
             pub_dates.append(i.publication_date)
     # pub_dates = [i.publication_date for i in s2paper.references]
     sorted_dates = sorted(pub_dates, reverse=True)
-    # 计算前1/3处的索引位置
+    # 
     date_index = len(sorted_dates) // 2
 
-    # 取前1/3处的日期
+    # 
     index_date = sorted_dates[date_index]
 
     pub_time = s2paper.publication_date

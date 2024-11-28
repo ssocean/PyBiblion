@@ -12,21 +12,21 @@ from database.DBEntity import PaperMapping
 from retrievers.arxiv_paper import Arxiv_paper
 
 from retry import retry
-# 单个搜索结果处理函数@
+# 
 @retry(tries=5)
 def process_result(session, result, out_dir, key_word, query):
     key_words_count = {}
     error_list = []
 
     if '/' in result._get_default_filename() or '\\' in result._get_default_filename():
-        return key_words_count, error_list  # 跳过不合法的文件名
+        return key_words_count, error_list  # 
 
     if result.published.year >= 2010:
 
         arxiv_paper = Arxiv_paper(result, ref_type='entity')
         data = session.query(PaperMapping).filter(PaperMapping.id == arxiv_paper.id).first()
 
-        if data is None:  # 当前论文不在数据库中
+        if data is None:  # 
             if not os.path.exists(os.path.join(out_dir, result._get_default_filename())):
                 try:
                     print(result._get_default_filename()+'Downloading...')
@@ -57,7 +57,7 @@ def process_keyword(session, key_word, out_dir, lock, total_keywords_count, tota
     key_words_count = {}
     error_list = []
 
-    # 查询规则
+    # 
     query = f'(ti:"review" OR ti:"survey") AND (ti: "{key_word.lower()}" OR abs:"{key_word.lower()}")'
 
     search = arxiv.Search(query=query,
@@ -68,11 +68,11 @@ def process_keyword(session, key_word, out_dir, lock, total_keywords_count, tota
 
     for result in search.results():
         search_rst.append(result)
-    # 使用并行线程池来处理每个搜索结果
+    # 
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {}
 
-        # 使用for循环来提交任务，并从search_rst中取结果
+        # 
         for result in search_rst:
             future = executor.submit(process_result, session, result, out_dir, key_word, query)
             futures[future] = result
@@ -80,7 +80,7 @@ def process_keyword(session, key_word, out_dir, lock, total_keywords_count, tota
         for future in as_completed(futures):
             try:
                 partial_keywords_count, partial_error_list = future.result()
-                # 锁住共享资源以确保线程安全
+                # 
                 with lock:
                     for k, v in partial_keywords_count.items():
                         if k in total_keywords_count:
@@ -99,18 +99,18 @@ def main(session):
     key_words = list(set([i.lower() for i in key_words]))
 
 
-    out_dir = r'J:\SLR'  # 设置输出路径
+    out_dir = r'J:\SLR'  # 
     total_keywords_count = {}
     total_error_list = []
-    lock = threading.Lock()  # 创建一个锁对象，用于同步
+    lock = threading.Lock()  # 
 
-    # 逐个处理每个关键词
+    # 
     for key_word in tqdm(key_words):
         process_keyword(session, key_word, out_dir, lock, total_keywords_count, total_error_list)
 
     session.close()
 
-    # 保存结果
+    # 
     with open(r"C:\Users\Ocean\Documents\GitHub\PyBiblion\tools\kwd_count.json", "w") as json_file:
         json.dump(total_keywords_count, json_file)
 

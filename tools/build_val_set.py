@@ -103,10 +103,10 @@ from cfg.safesession import session, engine, session_factory
 
 def single_review_feature_persistance(row_id, session_factory):
     """Function to process each paper and check if it is a review"""
-    # 使用 session_factory 创建一个独立的 session
+    # 
     session = session_factory()
 
-    # 查询单个 row 的数据
+    # 
     row = session.query(PaperMapping).filter(PaperMapping.id == row_id).first()
 
     if True:
@@ -144,11 +144,11 @@ def single_review_feature_persistance(row_id, session_factory):
 
     result = f'{row.title}||{row.is_review}'
 
-    session.close()  # 关闭 session
+    session.close()  # 
     return result
 from sqlalchemy import or_
 def review_feature_persistance(session, session_factory):
-    # 获取所有需要处理的论文记录
+    # 
     results = (
         session.query(PaperMapping)
         .filter(
@@ -159,23 +159,23 @@ def review_feature_persistance(session, session_factory):
         .all()
     )
 
-    # 提取所有 row 的 id，避免在主线程中共享 session
+    # 
     row_ids = [row.id for row in results]
 
-    # 使用 ThreadPoolExecutor 并行处理
+    # 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = []
 
-        # 提交任务到线程池
+        # 
         for row_id in tqdm(row_ids):
             future = executor.submit(single_review_feature_persistance, row_id, session_factory)
             futures.append(future)
 
-        # 打印每个完成的任务结果
+        # 
         for future in concurrent.futures.as_completed(futures):
             print(future.result())
 
-    # 关闭主线程中的 session
+    # 
     session.close()
 
 
@@ -197,30 +197,30 @@ from pdfminer.high_level import extract_pages, extract_text
 
 def extract_pdf_text(pdf_path):
     try:
-        # 提取 PDF 的全部文本
+        # 
         text = extract_text(pdf_path)
 
-        # 计算总页数
+        # 
         total_pages = sum(1 for _ in extract_pages(pdf_path))
 
         return text, total_pages
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        return "", 0  # 返回空字符串和 0 页数
+        return "", 0  # 
 def count_words(pth, row, session):
     try:
         content,page_num =  extract_pdf_text(pth)
-    # 使用 nltk 分词并计算单词数量
+    # 
         words = nltk.word_tokenize(content)
-        english_words = [word for word in words if word.isalpha()]  # 过滤非字母字符
+        english_words = [word for word in words if word.isalpha()]  # 
 
         row.word_count = len(english_words)
         row.paper_num_pages = page_num
-        # # 使用 split() 分割单词，并过滤出只包含字母的单词
+        # 
         # str_words = [word for word in content.split() if word.isalpha()]
 
-        # 计算两个列表之间的差异
+        # 
 
         session.commit()
 
@@ -228,7 +228,7 @@ def count_words(pth, row, session):
         print(f"An error occurred: {e}")
 
 def fig_tab_persistance(session,):
-    # 获取所有需要处理的论文记录
+    # 
     results = (
         session.query(PaperMapping)
         .filter(
@@ -238,28 +238,28 @@ def fig_tab_persistance(session,):
         .all()
     )
 
-    # 提取所有 row 的 id，避免在主线程中共享 session
+    # 
     rows = [row for row in results]
 
-    # 使用 ThreadPoolExecutor 并行处理
+    # 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = []
 
-        # 提交任务到线程池
+        # 
         for row in tqdm(rows):
             future = executor.submit(update_benchmark,os.path.join(r'J:\SLR', row.download_pth),row, session,)
             futures.append(future)
 
-        # 打印每个完成的任务结果
+        # 
         for future in concurrent.futures.as_completed(futures):
             print(future.result())
 
-    # 关闭主线程中的 session
+    # 
     session.close()
 def stat_review_feature_by_status(session):
     results = session.query(PaperMapping).filter(PaperMapping.feature_analyzed == 1).all()
 
-    # 初始化统计计数
+    # 
     accepted_totals = {
         "taxonomy": 0,
         "benchmark": 0,
@@ -278,12 +278,12 @@ def stat_review_feature_by_status(session):
         "future": 0,
     }
 
-    # 统计数量
+    # 
     accepted_count = 0
     unreviewed_count = 0
     for row in results:
         if row.s2_pub_info == "arXiv.org":
-            # 对未中稿的论文统计
+            # 
             unreviewed_count += 1
             unreviewed_totals["taxonomy"] += 1 if row.taxonomy else 0
             unreviewed_totals["benchmark"] += 1 if row.benchmark else 0
@@ -292,7 +292,7 @@ def stat_review_feature_by_status(session):
             unreviewed_totals["application"] += 1 if row.application else 0
             unreviewed_totals["future"] += 1 if row.future else 0
         else:
-            # 对已中稿的论文统计
+            # 
             accepted_count += 1
             accepted_totals["taxonomy"] += 1 if row.taxonomy else 0
             accepted_totals["benchmark"] += 1 if row.benchmark else 0
@@ -301,11 +301,11 @@ def stat_review_feature_by_status(session):
             accepted_totals["application"] += 1 if row.application else 0
             accepted_totals["future"] += 1 if row.future else 0
 
-    # 计算比例
+    # 
     accepted_proportions = {feature: (count / accepted_count) if accepted_count else 0 for feature, count in accepted_totals.items()}
     unreviewed_proportions = {feature: (count / unreviewed_count) if unreviewed_count else 0 for feature, count in unreviewed_totals.items()}
 
-    # 打印数量结果
+    # 
     print("Accepted Papers Feature Counts:")
     for feature, count in accepted_totals.items():
         print(f"{feature}: {count}")
@@ -314,7 +314,7 @@ def stat_review_feature_by_status(session):
     for feature, count in unreviewed_totals.items():
         print(f"{feature}: {count}")
 
-    # 返回比例结果
+    # 
     return accepted_proportions, unreviewed_proportions
 
 import matplotlib.pyplot as plt
@@ -423,7 +423,7 @@ def stat_review_feature(session):
 api_llm = 'gpt-4o-mini'
 
 def get_review_feature_by_title(session,title):
-    # 获取所有需要处理的论文记录
+    # 
     result = session.query(PaperMapping).filter(PaperMapping.title==title).first()
 
     print()
@@ -562,7 +562,7 @@ def prompt_eng_eval( file_path):
         df = pd.read_csv(file_path, encoding='utf-8')
     except UnicodeDecodeError:
         df = pd.read_csv(file_path, encoding='ISO-8859-1')
-    # 只取最后50行
+    # 
     # df = df.tail(50)
     # df = df.tail(25)
 
@@ -578,7 +578,7 @@ def prompt_eng_eval( file_path):
     total_rows = 0
     title_to_row = {row['title']: row for index, row in df.iterrows()}
 
-    # 存储错误的ID和错误的结果
+    # 
     incorrect_predictions = {
         'taxonomy': [],
         'benchmark': [],
@@ -591,14 +591,14 @@ def prompt_eng_eval( file_path):
     from sqlalchemy.orm import scoped_session, sessionmaker
 
     def fetch_rp(title):
-        session = session_factory()  # 为每个线程创建新的 session
+        session = session_factory()  # 
         try:
             return title, get_review_feature_by_title(session, title)
         except Exception as e:
             print(e)
             return title, None
         finally:
-            session.close()  # 确保 session 在任务结束后关闭
+            session.close()  # 
 
     with ThreadPoolExecutor(max_workers=8) as executor: #8
         futures = {executor.submit(fetch_rp, title): title for title in title_to_row.keys()}
@@ -650,7 +650,7 @@ def prompt_eng_eval( file_path):
     print("\nAccuracy Results:")
     print(results_df.to_string(index=False, float_format='%.2f'))
 
-    # 输出错误的ID和结果
+    # 
     print("\nIncorrect Predictions:")
     for category, errors in incorrect_predictions.items():
         if errors:

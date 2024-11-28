@@ -497,7 +497,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             pass
         except:
             continue
-        # 将两个字典转换为计数器对象
+        # 
         counter1 = Counter(total_freq_dict)
         counter2 = Counter(freq_dict)
 
@@ -506,10 +506,10 @@ def main(argv: Optional[List[str]] = None) -> None:
         # counter_word_dist = Counter(word_dis_hist_dict)
         # counter_kwd_hist = Counter(keyword_hist)
         # hist_counter = counter_word_dist+counter_kwd_hist
-        # 合并两个计数器对象
+        # 
         merged_counter = counter1 + counter2
 
-        # 将合并后的计数器对象转换为字典
+        # 
         total_freq_dict = dict(merged_counter)
         # word_dis_hist_dict = dict(hist_counter)
     print('\n')

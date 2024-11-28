@@ -19,7 +19,7 @@ import datetime
 
 def add_info_to_database(dir: str, session):
     '''
-    从arxiv下载后论文的第一步
+    arxiv下载后论文的第一步
     :param dir:
     :param session:
     :return:
@@ -196,10 +196,10 @@ def update_s2_citation(session):
 
 def process_paper_is_review(row_id, session_factory):
     """Function to process each paper and check if it is a review"""
-    # 使用 session_factory 创建一个独立的 session
+    # 
     session = session_factory()
 
-    # 查询单个 row 的数据
+    # 
     row = session.query(PaperMapping).filter(PaperMapping.id == row_id).first()
 
     if row.is_review is None:
@@ -209,29 +209,29 @@ def process_paper_is_review(row_id, session_factory):
 
     result = f'{row.title}||{row.is_review}||{row.gpt_keywords}'
 
-    session.close()  # 关闭 session
+    session.close()  # 
     return result
 def check_is_review(session, session_factory):
-    # 获取所有需要处理的论文记录
+    # 
     results = session.query(PaperMapping).all()
 
-    # 提取所有 row 的 id，避免在主线程中共享 session
+    # 
     row_ids = [row.id for row in results]
 
-    # 使用 ThreadPoolExecutor 并行处理
+    # 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = []
 
-        # 提交任务到线程池
+        # 
         for row_id in tqdm(row_ids):
             future = executor.submit(process_paper_is_review, row_id, session_factory)
             futures.append(future)
 
-        # 打印每个完成的任务结果
+        # 
         for future in concurrent.futures.as_completed(futures):
             print(future.result())
 
-    # 关闭主线程中的 session
+    # 
     session.close()
 
 

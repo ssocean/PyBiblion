@@ -116,7 +116,7 @@ def extract_keyword_from_pdf(fpth):
 #
 #     response = openai.ChatCompletion.create(
 #         model="gpt-3.5-turbo",
-#         # prompt需要用英语替换，少占用token。
+# 
 #         messages=messages,
 #     )
 #     result = ''
@@ -130,38 +130,38 @@ import re
 
 
 def get_structure_md(md_pth):
-    # 初始化MarkdownIt实例
+    # 
     md = MarkdownIt()
     import md_toc
-    # 读取Markdown文件内容
+    # 
     with open(md_pth, 'r', encoding='utf-8') as md_file:
         markdown_text = md_file.read()
-    # 使用mdtoc生成目录
-    # 将Markdown解析为HTML
+    # 
+    # 
     html_content = md.render(markdown_text)
 
-    # 使用BeautifulSoup解析HTML
+    # 
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # 查找所有标题（h1-h6）
+    # 
     headings = soup.find_all(re.compile('^h[1-6]$'))
 
-    # 存储标题层级和内容的字典
+    # 
     content_dict = []
 
-    # 遍历所有标题，提取层级和内容
+    # 
     for i, heading in enumerate(headings):
-        level = int(heading.name[1])  # 获取标题的级别，例如 h2 -> 2, h3 -> 3
-        title = heading.get_text()  # 获取标题的文本内容
+        level = int(heading.name[1])  # 
+        title = heading.get_text()  # 
 
-        # 找到标题下的所有兄弟节点，直到下一个标题为止
+        # 
         content = []
         for sibling in heading.find_next_siblings():
             if sibling.name and sibling.name.startswith('h'):
                 break
             content.append(sibling.get_text().strip())
 
-        # 存储标题、层级和内容
+        # 
         content_dict.append({
             'ID': i,
             'level': level,

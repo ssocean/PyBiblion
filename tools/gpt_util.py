@@ -13,7 +13,7 @@ from langchain_core.exceptions import OutputParserException
 
 from tools.pdf_util import get_structure_md, get_toc_from_md, extract_title_and_abstract
 
-# 配置 requests_cache，使用 SQLite 后端
+# 
 requests_cache.install_cache('requests_cache')
 
 from langchain.agents import AgentExecutor
@@ -614,16 +614,16 @@ def naive_figtab_retriver(markdown_text):
 
 import re
 def filter_list(input_list,pattern = r'\b(Fig\.?|Figure|FIG|FIGURE)\b'): # r'\b(Table|TAB|TABLE|Tab\.)\b'
-    # 编译一个正则表达式模式来检查包含 'www.'、'http:'、'https:' 等子串的内容
+    # 
     # pattern = re.compile(r'www\.|http:|https:|\.com|github|sway')
     pattern = re.compile(pattern, re.IGNORECASE)
     output_set = set()
     output_list = []
 
     for item in input_list:
-        # 使用预编译的正则表达式一次性检查所有子串
+        # 
         if pattern.search(item.page_content):
-            # 只添加不在集合中的项
+            # 
             if item.page_content not in output_set:
                 output_list.append(item)
                 output_set.add(item.page_content)
