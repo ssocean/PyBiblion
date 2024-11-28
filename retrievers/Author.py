@@ -6,7 +6,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 import requests
 from retry import retry
-from CACHE.CACHE_Config import generate_cache_file_name
+from CACHE.cache_request import generate_cache_file_name
 from cfg.config import *
 
 

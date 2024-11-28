@@ -1,6 +1,6 @@
 import shelve
 import requests
-from CACHE.CACHE_Config import generate_cache_file_name
+from CACHE.cache_request import generate_cache_file_name
 from database.DBEntity import PaperMapping, CoP
 from retrievers.arxiv_paper import Arxiv_paper
 import concurrent.futures

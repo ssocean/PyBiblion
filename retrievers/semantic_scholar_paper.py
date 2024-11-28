@@ -47,6 +47,13 @@ class S2paper(Document):
         self._IEI = None
         self._RQM = None
         self._RUI = None
+        self.headers = None
+        if s2api is not None:
+            self.headers = {
+                'x-api-key': s2api
+            }
+
+
         self.use_cache = use_cache
 
 
@@ -60,20 +67,7 @@ class S2paper(Document):
 
         if self._entity is None:
             url = f"{self.S2_QUERY_URL}?query={self.ref_obj}&fieldsOfStudy=Computer Science&fields=url,title,abstract,authors,venue,externalIds,referenceCount,tldr,openAccessPdf,citationCount,influentialCitationCount,influentialCitationCount,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,publicationDate,publicationVenue&offset=0&limit=1"
-            with shelve.open(generate_cache_file_name(url)) as cache:
-                if url in cache and self.use_cache and cache[url].status_code==200:
-                    reply = cache[url]
-                else:
-                    session = requests.Session()
-                    if s2api is not None:
-                        headers = {
-                            'x-api-key': s2api
-                        }
-                    else:
-                        headers = None
-                    reply = session.get(url, headers=headers)
-                    cache[url] = reply
-
+            reply = cached_get(url, headers=self.headers)
             response = reply.json()
             if "data" not in response:
                 msg = response.get("error") or response.get("message") or "unknown"
@@ -165,27 +159,14 @@ class S2paper(Document):
                 else:
                     url = (f'https://api.semanticscholar.org/graph/v1/paper/{self.s2id}/authors?fields=authorId,'
                            f'externalIds,name,affiliations,homepage,paperCount,citationCount,hIndex,url')
+                    reply = cached_get(url, headers=self.headers)
 
-                    with shelve.open(generate_cache_file_name(url)) as cache:
-                        if url in cache and self.use_cache and cache[url].status_code == 200:
-                            r = cache[url]
-                        else:
-                            if s2api is not None:
-                                headers = {
-                                    'x-api-key': s2api
-                                }
-                            else:
-                                headers = None
-                            r = requests.get(
-                                url,
-                                headers=headers
-                            )
-                        for item in r.json()['data']:
-                            author = Author(item['name'], _s2_id=item['authorId'], _s2_url=item['url'],
-                                            _h_index=item['hIndex'], _citationCount=item['citationCount'],
-                                            _paperCount=item['paperCount'])
-                            authors.append(author)
-                        return authors
+                    for item in reply.json()['data']:
+                        author = Author(item['name'], _s2_id=item['authorId'], _s2_url=item['url'],
+                                        _h_index=item['hIndex'], _citationCount=item['citationCount'],
+                                        _paperCount=item['paperCount'])
+                        authors.append(author)
+                    return authors
 
         return None
 
@@ -289,52 +270,29 @@ class S2paper(Document):
         if self.entity:
             references = []
             url = f'https://api.semanticscholar.org/graph/v1/paper/{self.s2id}/references?fields=authors,contexts,intents,isInfluential,venue,title,authors,citationCount,influentialCitationCount,publicationDate,venue&limit=999'
-            cache_file = generate_cache_file_name(url)
-            lock = FileLock(cache_file + ".lock")
+            reply = cached_get(url, headers=self.headers)
 
-            with lock:
-                try:
-                    cache = shelve.open(cache_file)
-                except Exception as e:
-                    print(f"Error opening shelve: {e}")
-                    cache = shelve.open(cache_file)  # 
-                finally:
-                    if 'cache' in locals():
-                        with cache:
-                            if url in cache:
-                                r = cache[url]
-                            else:
-                                if s2api is not None:
-                                    headers = {
-                                        'x-api-key': s2api
-                                    }
-                                else:
-                                    headers = None
-                                r = requests.get(url, headers=headers)
 
-                                r.raise_for_status()
+            if 'data' not in reply.json() or reply is None or reply.json()['data'] is None or reply.json() is None:
+                return []
 
-                                cache[url] = r
-                            if 'data' not in r.json() or r is None or r.json()['data'] is None or r.json() is None:
-                                return []
+            for item in reply.json()['data']:
+                # print(item)
+                ref = S2paper(item['citedPaper']['title'])
+                ref.filled_authors = False
+                info = {'paperId': item['citedPaper']['paperId'], 'contexts': item['contexts'],
+                        'intents': item['intents'], 'isInfluential': item['isInfluential'],
+                        'title': item['citedPaper']['title'], 'venue': item['citedPaper']['venue'],
+                        'citationCount': item['citedPaper']['citationCount'],
+                        'influentialCitationCount': item['citedPaper']['influentialCitationCount'],
+                        'publicationDate': item['citedPaper']['publicationDate']}
+                # authors = []
 
-                            for item in r.json()['data']:
-                                # print(item)
-                                ref = S2paper(item['citedPaper']['title'])
-                                ref.filled_authors = False
-                                info = {'paperId': item['citedPaper']['paperId'], 'contexts': item['contexts'],
-                                        'intents': item['intents'], 'isInfluential': item['isInfluential'],
-                                        'title': item['citedPaper']['title'], 'venue': item['citedPaper']['venue'],
-                                        'citationCount': item['citedPaper']['citationCount'],
-                                        'influentialCitationCount': item['citedPaper']['influentialCitationCount'],
-                                        'publicationDate': item['citedPaper']['publicationDate']}
-                                # authors = []
+                ref._entity = info
+                # print(ref.citation_count)
+                references.append(ref)
 
-                                ref._entity = info
-                                # print(ref.citation_count)
-                                references.append(ref)
-
-                            return references
+            return references
 
 
         return None
@@ -350,40 +308,27 @@ class S2paper(Document):
 
                 url = f'https://api.semanticscholar.org/graph/v1/paper/{self.s2id}/citations?fields=authors,contexts,intents,isInfluential,venue,title,authors,citationCount,influentialCitationCount,publicationDate,venue&limit=1000&offset={offset}'
                 offset += 1000
-                with shelve.open(generate_cache_file_name(url)) as cache:
-                    # print(url) #references->citations
-                    if url in cache:
-                        r = cache[url]
-                    else:
-                        if s2api is not None:
-                            headers = {
-                                'x-api-key': s2api
-                            }
-                        else:
-                            headers = None
-                        r = requests.get(url, headers=headers)
-                        r.raise_for_status()
-                        cache[url] = r
-                    if 'data' not in r.json() or r.json()['data'] == []:
-                        is_continue = False
-                    for item in r.json()['data']:
-                        # print(item)
-                        ref = S2paper(item['citingPaper']['title'])
+                reply = cached_get(url, headers=self.headers)
+                if 'data' not in reply.json() or reply.json()['data'] == []:
+                    is_continue = False
+                for item in reply.json()['data']:
+                    # print(item)
+                    ref = S2paper(item['citingPaper']['title'])
 
-                        ref.filled_authors = True
+                    ref.filled_authors = True
 
-                        info = {'paperId': item['citingPaper']['paperId'], 'contexts': item['contexts'],
-                                'intents': item['intents'], 'isInfluential': item['isInfluential'],
-                                'title': item['citingPaper']['title'], 'venue': item['citingPaper']['venue'],
-                                'citationCount': item['citingPaper']['citationCount'],
-                                'influentialCitationCount': item['citingPaper']['influentialCitationCount'],
-                                'publicationDate': item['citingPaper']['publicationDate'],
-                                'authors': item['citingPaper']['authors']}
-                        # authors = []
+                    info = {'paperId': item['citingPaper']['paperId'], 'contexts': item['contexts'],
+                            'intents': item['intents'], 'isInfluential': item['isInfluential'],
+                            'title': item['citingPaper']['title'], 'venue': item['citingPaper']['venue'],
+                            'citationCount': item['citingPaper']['citationCount'],
+                            'influentialCitationCount': item['citingPaper']['influentialCitationCount'],
+                            'publicationDate': item['citingPaper']['publicationDate'],
+                            'authors': item['citingPaper']['authors']}
+                    # authors = []
 
-                        ref._entity = info
-                        # print(ref.citation_count)
-                        references.append(ref)
+                    ref._entity = info
+                    # print(ref.citation_count)
+                    references.append(ref)
             return references
 
         return None

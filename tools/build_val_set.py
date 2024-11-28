@@ -21,7 +21,7 @@ import requests
 from sqlalchemy.exc import SQLAlchemyError
 from tqdm import tqdm
 
-from CACHE.CACHE_Config import generate_cache_file_name
+from CACHE.cache_request import generate_cache_file_name
 from database.DBEntity import PaperMapping, CoP
 from retrievers.Author import Author
 from retrievers.arxiv_paper import Arxiv_paper

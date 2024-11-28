@@ -5,7 +5,7 @@ import time
 import warnings
 from retry import retry
 from scipy.stats import spearmanr, pearsonr
-from CACHE.CACHE_Config import generate_cache_file_name
+from CACHE.cache_request import generate_cache_file_name
 from cfg.config import eskey, openai_key, s2api
 from retrievers.semantic_scholar_paper import S2paper, request_query
 import openai
