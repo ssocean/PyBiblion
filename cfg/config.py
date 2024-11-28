@@ -8,11 +8,11 @@ s2api = None
 openai_key =None
 # easy scholar API || Free || non-mandatory || If not provided, then no conference lever, journal IF will be presented on PDF || A key used for searching IF or CCF level for journal or conference, you can request one via https://www.easyscholar.cc/console/user/open
 eskey = None
-API_SECRET_KEY = None
+API_SECRET_KEY = 'None'
 BASE_URL = "https://flag.smarttrot.com/v1/"
 os.environ["OPENAI_API_KEY"] = API_SECRET_KEY
 os.environ["OPENAI_API_BASE"] = BASE_URL
-os.environ["SERPER_API_KEY"] = None
+os.environ["SERPER_API_KEY"] = 'None'
 S2_PAPER_URL = "https://api.semanticscholar.org/v1/paper/"
 S2_QUERY_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 from .local_config import *
