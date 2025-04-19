@@ -17,11 +17,10 @@ Note: The term "biblion" is derived from the ancient Greek word "βιβλίον"
 ## Features
 
 - **Meta-data Retrieval**: Automated tools for fetching literature data from multiple databases.
-- **Data Analysis**: Offers a variety of literature data analysis tools, including but not limited to keyword extraction, and metric calculation.
-- **Visualization**: Generates intuitive charts and diagrams to help understand the distribution and relationships within the literature data.
 - **Extensibility**: The code is structured clearly, making it easy for other researchers to modify and extend according to their needs.
 
 ## News and Updates
+* 2025.4.19 🔧 We have decoupled the project. Starting from this update, the main branch will retain only retrieval and metric-related functionalities. Additional features (such as plotting and other paper-related code) have been moved to the academic-support branch.
 * 2024.11.27 🔧 We have implemented extensive fixes to the codebase, including code refactoring, cache optimization, and more.
 * 2024.06.27 🔧 We identified a duplicated request bug in most GPT-related function. Besides, we fixed few errors in S2Paper class.
 * 2024.04.25 🔥 We've integrated the popular Langchain (with OpenAI 1.0 version enabled) into our framework, making everything GPT-related run smoother and faster. 
